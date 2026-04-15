@@ -8,7 +8,6 @@ terraform {
 }
 
 provider "proxmox" {
-  endpoint = var.proxmox_endpoint
-  # We're setting the API token in .envrc.local
+  # We're setting the Endpoint and API token in .envrc.local
   insecure = true # set to false if using a valid TLS certificate
 }
