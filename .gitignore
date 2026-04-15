@@ -1,0 +1,8 @@
+.envrc.local
+.direnv/
+.terraform/
+*.tfstate
+*.tfstate.*
+/nixos-*
+/nixos-vm
+.kubeconfig

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "terraform": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "hashicorp/terraform-mcp-server:0.5.1"]
+    },
+	"nixos": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "ghcr.io/utensils/mcp-nixos"]
+    }
+  }
+}
