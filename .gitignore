@@ -6,3 +6,4 @@
 /nixos-*
 /nixos-vm
 .kubeconfig
+nixos/lan.nix

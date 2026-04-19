@@ -79,6 +79,13 @@ The flake is structured for the flip: `nixosConfigurations.base-lxc` + `packages
 
 - `.envrc` (committed) sets `TF_VAR_*_image_path` to `$PWD/nixos-*` and `KUBECONFIG=$PWD/.kubeconfig`.
 - `.envrc.local` (gitignored) sets the Proxmox endpoint + API token for the bpg provider. **`.envrc.local.example` is the canonical schema** — copy it to `.envrc.local`, fill in real values, run `direnv allow`. When adding a new local-only env var, update the `.example` file in the same change so the docs stay current.
+- **`nixos/lan.nix`** (gitignored) holds LAN topology values (`ingressIp`, `lanCidr`) used by `nixos/dns.nix`. **`nixos/lan.example.nix`** is the schema. Bootstrap on a fresh clone:
+  ```sh
+  cp nixos/lan.example.nix nixos/lan.nix
+  # edit with real values
+  git add -fN nixos/lan.nix    # --force --intent-to-add so the flake can read it
+  ```
+  Without the `git add -fN`, `nix build` / `nixos-rebuild` fails with `path nixos/lan.nix does not exist` — flakes only see git-tracked or intent-to-add'd files. Same pattern as `.envrc.local` but at the file layer, because Nix can't read env vars at eval time without breaking pure flakes. When adding a new value, update both `lan.nix` and `lan.example.nix` in the same change.
 - `local.node_name = "pve"` in `terraform/locals.tf` is the Proxmox node; change there if your node has a different name.
 - Authorized SSH keys are inlined in `nixos/proxmox.nix`, `nixos/proxmox-lxc.nix`, and `nixos/host.nix` — update all three when rotating.
 
