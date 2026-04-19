@@ -1,5 +1,19 @@
-{lib, ...}: {
+{lib, ...}: let
+  inherit (import ./lan.nix) k3sIp gateway;
+in {
   networking.hostName = lib.mkForce "k3s";
+
+  # Static IP — stable kubeconfig URL + lets us pin the API cert SAN.
+  # Picked outside the router's DHCP pool to avoid lease conflicts.
+  networking.useDHCP = lib.mkForce false;
+  networking.interfaces.ens18.ipv4.addresses = [
+    {
+      address = k3sIp;
+      prefixLength = 24;
+    }
+  ];
+  networking.defaultGateway = gateway;
+  networking.nameservers = ["1.1.1.1" "1.0.0.1"];
 
   services.k3s = {
     enable = true;
@@ -7,6 +21,9 @@
     extraFlags = [
       "--write-kubeconfig-mode=644"
       "--disable=traefik"
+      # Add the LAN IP to the API server's TLS cert SAN so kubectl
+      # connects without --insecure-skip-tls-verify.
+      "--tls-san=${k3sIp}"
       # Force IPv4-only cluster networking. Without these, k3s autodetects
       # the host's IPv6 and assigns pods/services IPv6 IPs that can't
       # escape to the LAN's IPv4 DNS, breaking external resolution from

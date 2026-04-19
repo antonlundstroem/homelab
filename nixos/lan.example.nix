@@ -21,4 +21,16 @@
   # CIDR of the home LAN that the dns server is allowed to answer.
   # Anything outside this range gets refused (recursion-protection).
   lanCidr = "10.0.0.0/24";
+
+  # Static IP for the dns VM (set in nixos/dns.nix). Pick one OUTSIDE
+  # your router's DHCP pool to avoid lease conflicts.
+  dnsIp = "10.0.0.2";
+
+  # Static IP for the k3s server VM (set in nixos/k3s-server.nix). Also
+  # baked into the API server's TLS cert SAN so kubectl can connect by IP
+  # without --insecure-skip-tls-verify.
+  k3sIp = "10.0.0.3";
+
+  # LAN gateway — the router. Used as the default route on every VM.
+  gateway = "10.0.0.1";
 }
