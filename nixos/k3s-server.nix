@@ -7,6 +7,12 @@
     extraFlags = [
       "--write-kubeconfig-mode=644"
       "--disable=traefik"
+      # Force IPv4-only cluster networking. Without these, k3s autodetects
+      # the host's IPv6 and assigns pods/services IPv6 IPs that can't
+      # escape to the LAN's IPv4 DNS, breaking external resolution from
+      # inside pods (Helm installs, ArgoCD, etc.).
+      "--cluster-cidr=10.42.0.0/16"
+      "--service-cidr=10.43.0.0/16"
     ];
 
     manifests = {

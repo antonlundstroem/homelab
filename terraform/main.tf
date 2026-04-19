@@ -1,17 +1,20 @@
-resource "proxmox_virtual_environment_file" "nixos_image" {
+resource "proxmox_virtual_environment_file" "k3s_server_image" {
   content_type = "import"
   datastore_id = "local"
   node_name    = local.node_name
 
   source_file {
-    path      = var.nixos_vm_image_path
-    file_name = "nixos.qcow2"
-    checksum  = filesha256(var.nixos_vm_image_path)
+    path      = var.k3s_server_vm_image_path
+    file_name = "k3s-server.qcow2"
+    checksum  = filesha256(var.k3s_server_vm_image_path)
   }
 }
 
-resource "proxmox_virtual_environment_vm" "nixos" {
-  name      = "nixos"
+# k3s "server" runs both control plane and agent on this single VM
+# (k3s default — schedules pods on itself). For a single-node cluster
+# this *is* the whole cluster. Add k3s_agent_<n> resources later if scaling out.
+resource "proxmox_virtual_environment_vm" "k3s_server" {
+  name      = "k3s-server"
   node_name = local.node_name
   vm_id     = 300
 
@@ -25,14 +28,14 @@ resource "proxmox_virtual_environment_vm" "nixos" {
   }
 
   memory {
-    dedicated = 4096
+    dedicated = 8192
   }
 
   disk {
     datastore_id = "local-lvm"
     file_format  = "raw"
-    interface    = "scsi0"
-    import_from  = proxmox_virtual_environment_file.nixos_image.id
+    interface    = "virtio0"
+    import_from  = proxmox_virtual_environment_file.k3s_server_image.id
     size         = 20
   }
 
@@ -49,68 +52,68 @@ resource "proxmox_virtual_environment_vm" "nixos" {
   }
 }
 
-output "nixos_vm_ipv4" {
-  value = proxmox_virtual_environment_vm.nixos.ipv4_addresses
+output "k3s_server_vm_ipv4" {
+  value = proxmox_virtual_environment_vm.k3s_server.ipv4_addresses
 }
 
-resource "proxmox_virtual_environment_file" "nixos_dns_template" {
-  content_type = "vztmpl"
+# TODO(dns-as-lxc): once the Proxmox keyctl/root@pam friction is resolved,
+# replace this VM block with a proxmox_virtual_environment_container.
+# See CLAUDE.md "LAN DNS" for the migration plan; flake.nix and dns.nix
+# are already structured to flip back without further changes.
+resource "proxmox_virtual_environment_file" "nixos_dns_image" {
+  content_type = "import"
   datastore_id = "local"
   node_name    = local.node_name
 
   source_file {
-    path      = var.nixos_dns_lxc_template_path
-    file_name = "nixos-dns.tar.xz"
-    checksum  = filesha256(var.nixos_dns_lxc_template_path)
+    path      = var.nixos_dns_vm_image_path
+    file_name = "nixos-dns.qcow2"
+    checksum  = filesha256(var.nixos_dns_vm_image_path)
   }
 }
 
-resource "proxmox_virtual_environment_container" "dns" {
-  node_name     = local.node_name
-  vm_id         = 200
-  unprivileged  = true
-  start_on_boot = true
-  started       = true
+resource "proxmox_virtual_environment_vm" "dns" {
+  name      = "dns"
+  node_name = local.node_name
+  vm_id     = 200
 
-  operating_system {
-    template_file_id = proxmox_virtual_environment_file.nixos_dns_template.id
-    type             = "nixos"
+  agent {
+    enabled = true
   }
 
   cpu {
     cores = 1
+    type  = "host"
   }
 
   memory {
-    dedicated = 256
-    swap      = 0
+    dedicated = 512
   }
 
   disk {
     datastore_id = "local-lvm"
-    size         = 4
+    file_format  = "raw"
+    interface    = "virtio0"
+    import_from  = proxmox_virtual_environment_file.nixos_dns_image.id
+    size         = 6
   }
 
-  network_interface {
-    name   = "eth0"
+  network_device {
     bridge = "vmbr0"
   }
 
-  initialization {
-    hostname = "dns"
-
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
+  operating_system {
+    type = "l26"
   }
 
   lifecycle {
-    ignore_changes = [operating_system[0].template_file_id]
+    ignore_changes = [disk[0].import_from]
   }
 }
 
-output "dns_lxc_ipv4" {
-  value = proxmox_virtual_environment_container.dns.ipv4_addresses
+output "dns_vm_ipv4" {
+  value = one([
+    for ip in flatten(proxmox_virtual_environment_vm.dns.ipv4_addresses) :
+    ip if startswith(ip, "192.168.")
+  ])
 }

@@ -1,0 +1,22 @@
+# .envrc.local — local secrets and per-machine overrides for this repo.
+#
+# Copy this file to `.envrc.local` (gitignored), fill in real values, then run
+# `direnv allow` from the repo root. The committed `.envrc` calls
+# `source_env_if_exists .envrc.local`, so anything exported here is available
+# to opentofu and the devShell.
+#
+# When you add a new value here, also add a placeholder to this example file
+# so future-you (and Claude) know what the schema is.
+
+# ---- bpg/proxmox provider (terraform/provider.tf) -------------------------
+# The provider reads these PROXMOX_VE_* env vars natively — no TF_VAR needed.
+# Generate the API token in the Proxmox UI:
+#   Datacenter → Permissions → API Tokens → Add
+# Token format: <user>@<realm>!<token-id>=<secret-uuid>
+
+export PROXMOX_VE_ENDPOINT="https://192.168.1.100:8006/"
+export PROXMOX_VE_API_TOKEN="terraform@pve!homelab=00000000-0000-0000-0000-000000000000"
+
+# Optional: if your token is attached to root@pam (needed for LXC feature flags
+# like keyctl — see CLAUDE.md "LAN DNS"), it looks like:
+# export PROXMOX_VE_API_TOKEN="root@pam!terraform=00000000-0000-0000-0000-000000000000"

@@ -18,9 +18,12 @@
     # Enable QEMU Guest for Proxmox
     services.qemuGuest.enable = lib.mkDefault true;
 
-    # Use the boot drive for grub
+    # Install grub to the virtual disk's MBR so SeaBIOS can boot.
+    # Must be /dev/vda — make-disk-image (used by system.build.images.qemu)
+    # presents the install disk over virtio. Pair this with a virtio disk
+    # interface in the Terraform VM resource so future nixos-rebuilds also find it.
     boot.loader.grub.enable = lib.mkDefault true;
-    boot.loader.grub.devices = ["nodev"];
+    boot.loader.grub.devices = ["/dev/vda"];
 
     boot.growPartition = lib.mkDefault true;
 

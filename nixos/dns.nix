@@ -2,7 +2,7 @@
   ingressIp = "192.168.1.139"; # k3s ingress-nginx LB IP
   lanCidr = "192.168.1.0/24";
 in {
-  networking.hostName = lib.mkOverride 49 "dns";
+  networking.hostName = lib.mkForce "dns";
 
   services.unbound = {
     enable = true;
