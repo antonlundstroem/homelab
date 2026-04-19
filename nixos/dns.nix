@@ -1,5 +1,5 @@
 {lib, ...}: let
-  ingressIp = "192.168.1.139"; # k3s ingress-nginx LB IP
+  ingressIp = "192.168.1.174"; # k3s ingress-nginx LB IP
   lanCidr = "192.168.1.0/24";
 in {
   networking.hostName = lib.mkForce "dns";
