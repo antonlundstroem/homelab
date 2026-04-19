@@ -28,6 +28,12 @@
       modules = [./nixos/proxmox-lxc.nix];
     };
 
+    dnsLxcImage = nixos-generators.nixosGenerate {
+      inherit system;
+      format = "proxmox-lxc";
+      modules = [./nixos/proxmox-lxc.nix ./nixos/dns.nix];
+    };
+
     vmImage = nixos-generators.nixosGenerate {
       inherit system;
       format = "qcow";
@@ -43,6 +49,9 @@
     packages.${system} = {
       proxmox-lxc = pkgs.runCommand "nixos-proxmox-lxc.tar.xz" {} ''
         cp ${lxcImage}/tarball/*.tar.xz $out
+      '';
+      proxmox-lxc-dns = pkgs.runCommand "nixos-proxmox-lxc-dns.tar.xz" {} ''
+        cp ${dnsLxcImage}/tarball/*.tar.xz $out
       '';
       proxmox-vm = pkgs.runCommand "nixos-proxmox-vm.qcow2" {} ''
         cp ${vmImage}/*.qcow2 $out
@@ -74,6 +83,14 @@
       modules = [
         ./nixos/proxmox.nix
         ./nixos/k3s.nix
+      ];
+    };
+
+    nixosConfigurations.dns = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = [
+        ./nixos/proxmox-lxc.nix
+        ./nixos/dns.nix
       ];
     };
 
