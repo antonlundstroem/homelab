@@ -77,7 +77,7 @@ in {
               ingress:
                 enabled: true
                 ingressClassName: nginx
-                hostname: argocd.k3s.local
+                hostname: argocd.lan
           '';
         };
       };
