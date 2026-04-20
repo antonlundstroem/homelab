@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: hello
+  name: homeassistant
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/antonlundstroem/homelab.git
-    path: gitops/manifests/hello
+    path: gitops/manifests/homeassistant
     targetRevision: HEAD
   destination:
     server: https://kubernetes.default.svc
-    namespace: hello
+    namespace: homeassistant
   syncPolicy:
     automated:
       prune: true
