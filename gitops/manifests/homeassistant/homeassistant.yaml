@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: homeassistant
-          image: home-assistant:stable
+          image: homeassistant/home-assistant:stable
           ports:
             - containerPort: 80
           resources:
