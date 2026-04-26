@@ -38,6 +38,11 @@
         ./nixos/host.nix
       ];
 
+      host001 = mkSystem [
+        disko.nixosModules.disko
+        ./nixos/hosts/001/configuration.nix
+      ];
+
       base = mkSystem [./nixos/proxmox.nix];
       k3s-server = mkSystem [./nixos/proxmox.nix ./nixos/k3s-server.nix];
 

@@ -75,6 +75,36 @@ The `dns` VM (vmid 200) runs `unbound` and is the LAN's resolver. It answers `*.
 
 The flake is structured for the flip: `nixosConfigurations.base-lxc` + `packages.proxmox-lxc` already exist, and `nixos/dns.nix` only needs `lib.mkForce "dns"` → `lib.mkOverride 49 "dns"` reverted (the upstream proxmox-lxc image module's `mkForce ""` collides otherwise). See `# TODO(dns-as-lxc)` markers in `flake.nix` and `terraform/main.tf`.
 
+### Workload image strategy
+
+Workloads currently run as **vanilla container images** (whatever ArgoCD pulls from upstream registries via the manifests under `gitops/`). When image bloat actually starts to hurt, there's a spectrum of progressively smaller options that lean on the k3s node's Nix store:
+
+1. **Vanilla containers** *(current)* — biggest images, full upstream ecosystem. ArgoCD just deploys what's on Docker Hub / GHCR.
+2. **Nix-built OCI images** — `pkgs.dockerTools.buildLayeredImage` produces images with no distro base layer; each store path becomes its own layer, so containerd's content-addressed storage dedups across all Nix-built images on the node. Push to a registry (in-cluster or external), reference from manifests, ArgoCD flow is unchanged. Meaningful savings, normal k8s.
+3. **nix-snapshotter** (`pdtpartners/nix-snapshotter`) — containerd plugin: pods reference Nix store paths directly and are materialized from the host's `/nix/store` instead of pulled as image layers. Anything the host already has costs zero extra disk. ArgoCD doesn't care; the magic is below containerd. Smallest possible workloads while staying in k8s, but it's a custom containerd plugin — extra moving part on the node, smaller community. Would need wiring into `services.k3s` (custom containerd config) on `nixos/k3s-server.nix`.
+4. **Drop k8s entirely** — services as `systemd` units in the NixOS config, deploys via `nixos-rebuild` (or `deploy-rs` / `colmena`). Smallest system overall, but you give up the container ecosystem (Helm charts, operators, anything where upstream only ships an image), and ArgoCD is no longer in the picture.
+
+For this single-node homelab, (2) is the easy incremental win on a per-workload basis (best for services we'd build ourselves anyway); (3) is the "go all the way while keeping ArgoCD" answer if/when disk pressure justifies the extra plumbing. (4) is a different posture entirely — only worth it if k8s itself is the thing being questioned.
+
+### TODO — centralize laptop-local state on the Proxmox host
+
+Two things currently live on the laptop that would benefit from moving onto an always-on host. The **Proxmox host** is the natural target for both: it's up before any guest, has the most disk, and sits *outside* the k3s cluster (so there's no chicken-and-egg on cluster recovery). Nix on the Debian side is a clean one-line install and doesn't disturb Proxmox itself.
+
+**1. Shared Nix store.** Today the laptop and every NixOS guest each carry their own `/nix/store`, and the laptop rebuilds from scratch on a fresh clone. Two flavors:
+
+- **Binary cache** (`nix-serve` or `harmonia`) on the Proxmox host. Each guest keeps its own local `/nix/store` but only holds the closures it actually uses; rebuilds become peer copies instead of full builds. No boot-time coupling, low risk. **Start here.**
+- **NFS-mounted `/nix/store`** for the guests. One physical copy, every guest sees every path — maximum savings, but the NFS server becomes load-bearing for activation, file-locking on NFS has historical flake, and boot now depends on a network mount. The "go all the way" version if disk later becomes the actual constraint.
+
+Pairs with (3) under "Workload image strategy" — the same store host could eventually feed `nix-snapshotter` for in-cluster workloads, so the whole homelab references one physical copy of each path.
+
+**2. Terraform state.** `terraform/` currently uses the default local backend, so `terraform.tfstate` lives in the working directory on whichever laptop ran `tofu apply` last — no collaboration, no recovery from a lost laptop. Move to a remote backend on the Proxmox host:
+
+- **MinIO** (S3-compatible) → Terraform `s3` backend. Most familiar, useful for other things later, but a whole service to run.
+- **Postgres** → Terraform `pg` backend. Simpler if you don't want object storage for anything else.
+- **HTTP backend** against a tiny service → simplest, lowest-feature.
+
+Whichever, **don't put the backend in k3s** — Terraform owns the k3s VM's lifecycle, so state living in the cluster means you can't bootstrap or recover the cluster from scratch.
+
 ## Configuration / secrets
 
 - `.envrc` (committed) sets `TF_VAR_*_image_path` to `$PWD/nixos-*` and `KUBECONFIG=$PWD/.kubeconfig`.
