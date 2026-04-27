@@ -86,20 +86,20 @@ Workloads currently run as **vanilla container images** (whatever ArgoCD pulls f
 
 For this single-node homelab, (2) is the easy incremental win on a per-workload basis (best for services we'd build ourselves anyway); (3) is the "go all the way while keeping ArgoCD" answer if/when disk pressure justifies the extra plumbing. (4) is a different posture entirely — only worth it if k8s itself is the thing being questioned.
 
-### TODO — centralize laptop-local state on the Proxmox host
+### TODO — centralize laptop-local state on host001
 
-Two things currently live on the laptop that would benefit from moving onto an always-on host. The **Proxmox host** is the natural target for both: it's up before any guest, has the most disk, and sits *outside* the k3s cluster (so there's no chicken-and-egg on cluster recovery). Nix on the Debian side is a clean one-line install and doesn't disturb Proxmox itself.
+The Proxmox host has been decommissioned; that physical box is now `host001`, NixOS baremetal (see `nixos/hosts/001/`). It's the natural home for shared homelab plumbing: always-on, most disk, sits *outside* the k3s cluster (so cluster recovery doesn't chicken-and-egg through it), and already NixOS so adding services is a flake change rather than a new install.
 
 **1. Shared Nix store.** Today the laptop and every NixOS guest each carry their own `/nix/store`, and the laptop rebuilds from scratch on a fresh clone. Two flavors:
 
-- **Binary cache** (`nix-serve` or `harmonia`) on the Proxmox host. Each guest keeps its own local `/nix/store` but only holds the closures it actually uses; rebuilds become peer copies instead of full builds. No boot-time coupling, low risk. **Start here.**
+- **Binary cache** (`nix-serve` or `harmonia`) on host001. Each guest keeps its own local `/nix/store` but only holds the closures it actually uses; rebuilds become peer copies instead of full builds. No boot-time coupling, low risk. **Start here.**
 - **NFS-mounted `/nix/store`** for the guests. One physical copy, every guest sees every path — maximum savings, but the NFS server becomes load-bearing for activation, file-locking on NFS has historical flake, and boot now depends on a network mount. The "go all the way" version if disk later becomes the actual constraint.
 
 Pairs with (3) under "Workload image strategy" — the same store host could eventually feed `nix-snapshotter` for in-cluster workloads, so the whole homelab references one physical copy of each path.
 
-**2. Terraform state.** `terraform/` currently uses the default local backend, so `terraform.tfstate` lives in the working directory on whichever laptop ran `tofu apply` last — no collaboration, no recovery from a lost laptop. Move to a remote backend on the Proxmox host:
+**2. Terraform state.** `terraform/` currently uses the default local backend, so `terraform.tfstate` lives in the working directory on whichever laptop ran `tofu apply` last — no collaboration, no recovery from a lost laptop. Move to a remote backend on host001:
 
-- **MinIO** (S3-compatible) → Terraform `s3` backend. Most familiar, useful for other things later, but a whole service to run.
+- **Garage** (S3-compatible) → Terraform `s3` backend. MinIO would have been the obvious choice but the OSS edition is effectively gutted as of 2025; Garage is the homelab-friendly successor. Useful for other things later (binary cache backing, generic object storage). A whole service to run, but a small one.
 - **Postgres** → Terraform `pg` backend. Simpler if you don't want object storage for anything else.
 - **HTTP backend** against a tiny service → simplest, lowest-feature.
 
@@ -118,6 +118,10 @@ Whichever, **don't put the backend in k3s** — Terraform owns the k3s VM's life
   Without the `git add -fN`, `nix build` / `nixos-rebuild` fails with `path nixos/lan.nix does not exist` — flakes only see git-tracked or intent-to-add'd files. Same pattern as `.envrc.local` but at the file layer, because Nix can't read env vars at eval time without breaking pure flakes. When adding a new value, update both `lan.nix` and `lan.example.nix` in the same change.
 - `local.node_name = "pve"` in `terraform/locals.tf` is the Proxmox node; change there if your node has a different name.
 - Authorized SSH keys are inlined in `nixos/proxmox.nix`, `nixos/proxmox-lxc.nix`, and `nixos/host.nix` — update all three when rotating.
+
+### TODO — wire up sops-nix for declarative secrets
+
+If this isn't done yet by the time you read this, do it before adding a third service that needs a secret. Currently any real secret (e.g. Garage RPC/admin/metrics tokens) lives in a 0600 root-owned file pre-created out-of-band on the target host (`/etc/garage/secrets.env` style) — works, but punches a hole in the flake's reproducibility: a fresh install of host001 needs that file restored manually, and there's no version history. Adopt `sops-nix` (Mic92's module): age-encrypted secrets committed to the repo under `secrets/`, decrypted at activation using each host's SSH host key (already present on every NixOS box), surfaced as `/run/secrets/<name>`. Pattern then replaces the existing `services.X.environmentFile = "/etc/X/secrets.env"` with `environmentFile = config.sops.secrets.X_env.path`. The pure-pattern-cost is one flake input + a `.sops.yaml` + `ssh-to-age` bootstrap step; the payoff is every future secret stays declarative. Don't bother retrofitting `.envrc.local` (laptop-local, not deployed) or `nixos/lan.nix` (topology, not secret) — sops is for things that go on machines.
 
 ## MCP servers
 

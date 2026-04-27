@@ -2,6 +2,7 @@
   imports = [
     ./hardware-configuration.nix
     ./disko.nix
+    ./garage.nix
   ];
   # ZFS Support
   boot.supportedFilesystems = ["zfs"];
