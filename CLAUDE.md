@@ -119,9 +119,21 @@ Whichever, **don't put the backend in k3s** — Terraform owns the k3s VM's life
 - `local.node_name = "pve"` in `terraform/locals.tf` is the Proxmox node; change there if your node has a different name.
 - Authorized SSH keys are inlined in `nixos/proxmox.nix`, `nixos/proxmox-lxc.nix`, and `nixos/host.nix` — update all three when rotating.
 
-### TODO — wire up sops-nix for declarative secrets
+### Secrets — sops-nix
 
-If this isn't done yet by the time you read this, do it before adding a third service that needs a secret. Currently any real secret (e.g. Garage RPC/admin/metrics tokens) lives in a 0600 root-owned file pre-created out-of-band on the target host (`/etc/garage/secrets.env` style) — works, but punches a hole in the flake's reproducibility: a fresh install of host001 needs that file restored manually, and there's no version history. Adopt `sops-nix` (Mic92's module): age-encrypted secrets committed to the repo under `secrets/`, decrypted at activation using each host's SSH host key (already present on every NixOS box), surfaced as `/run/secrets/<name>`. Pattern then replaces the existing `services.X.environmentFile = "/etc/X/secrets.env"` with `environmentFile = config.sops.secrets.X_env.path`. The pure-pattern-cost is one flake input + a `.sops.yaml` + `ssh-to-age` bootstrap step; the payoff is every future secret stays declarative. Don't bother retrofitting `.envrc.local` (laptop-local, not deployed) or `nixos/lan.nix` (topology, not secret) — sops is for things that go on machines.
+Real secrets live in the repo as age-encrypted blobs under `secrets/hosts/<host>/`, decrypted at activation by `sops-nix` (Mic92's module) using each host's SSH host key (`/etc/ssh/ssh_host_ed25519_key`, already present on every NixOS box). Decrypted secrets surface as `/run/secrets/<name>` (tmpfs, regenerated each boot from the encrypted blob in the closure).
+
+`.sops.yaml` lists two recipients: `&base` (the laptop's age key, for editing) and `&host001` (host001's host SSH key converted via `ssh-to-age`, for activation-time decryption). To add a new secret, drop a YAML file under `secrets/hosts/001/`, encrypt with `sops`, then declare `sops.secrets.<name> = { ... };` in the host's NixOS config and reference `config.sops.secrets.<name>.path` from the consuming service. Pattern: replace `services.X.environmentFile = "/etc/X/secrets.env"` with `environmentFile = config.sops.secrets.X_env.path`.
+
+Gotchas:
+- For services using `DynamicUser=true` (Garage, others), don't set `owner`/`group` on the secret — the user doesn't exist as a persistent account, and `sops-install-secrets` will fail manifest validation (`failed to lookup user 'garage': unknown user`). Leave it root-owned 0400; systemd reads `EnvironmentFile` as root before dropping privileges, and the env vars only end up in the dynamic-user process anyway.
+- Reinstall hazard: a wipe regenerates the SSH host key, so existing encrypted secrets become undecryptable on the new host. Either preserve `/etc/ssh/ssh_host_ed25519_key{,.pub}` across reinstalls (USB / 1Password), or run `sops updatekeys secrets/hosts/001/*.yaml` from the laptop after the new host has booted (and update the `&host001` recipient in `.sops.yaml`).
+
+`.envrc.local` (laptop-local, not deployed) and `nixos/lan.nix` (topology, not secret) intentionally stay out of sops.
+
+### TODO — give Garage its own quota'd ZFS dataset on host001
+
+Today `/var/lib/garage/{meta,data}` lives directly on `rpool/root`, sharing the pool with the OS, `/home`, etc. Garage's `capacity` setting in the layout is a soft self-limit (it just stops accepting writes around that number) — it's not a disk reservation. Nothing prevents Garage from filling the whole pool if the cap is wrong or removed. Fix by giving it a dedicated dataset with a hard ZFS quota: extend `nixos/hosts/001/disko.nix` with a `rpool/garage` dataset (legacy mountpoint at `/var/lib/garage`, same `compression=zstd` etc. as siblings), set `quota = "50G"` (or whatever) in `rootFsOptions` for that dataset, and bump the `capacity` in `nixos/hosts/001/garage.nix` to match. After that, Garage gets `ENOSPC` at the filesystem layer if it tries to exceed — a real ceiling, not a soft hint. Worth doing before adding more disk-hungry services to host001 (VMs, container image cache, future binary-cache growth) so they can't accidentally crowd each other out. Note: changing disko on a live system isn't a `nixos-rebuild` away — it requires creating the dataset by hand with `zfs create` first, then moving the existing `/var/lib/garage` contents into it, then matching the disko config so a fresh install recreates the same layout.
 
 ## MCP servers
 

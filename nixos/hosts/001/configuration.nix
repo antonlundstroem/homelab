@@ -3,7 +3,21 @@
     ./hardware-configuration.nix
     ./disko.nix
     ./garage.nix
+    ./incus.nix
   ];
+
+  sops = {
+    defaultSopsFile = ../../../secrets/hosts/001/garage.yaml;
+    # age key auto-derived from /etc/ssh/ssh_host_ed25519_key — nothing to set.
+    # services.garage uses DynamicUser=true, so there's no persistent `garage`
+    # account to chown to. Leave the secret as root:root 0400 — systemd reads
+    # EnvironmentFile as root before dropping privileges to the dynamic user.
+    secrets.garage_env = {
+      key  = "garage_env";
+      mode = "0400";
+    };
+  };
+
   # ZFS Support
   boot.supportedFilesystems = ["zfs"];
   boot.zfs.forceImportRoot = false;
@@ -39,5 +53,8 @@
   environment.systemPackages = with pkgs; [vim git curl];
 
   system.stateVersion = "25.11";
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+  nix.settings = {
+    experimental-features = ["nix-command" "flakes"];
+    trusted-users = ["root" "@wheel"];
+  };
 }

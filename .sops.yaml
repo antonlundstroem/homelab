@@ -1,0 +1,9 @@
+keys:
+  - &base age13fsy6shtkt0z5am3xeru83q8zk3qgjtdj7am90e78xa6jmww23asuna6kk # BASE_PUB
+  - &host001 age1fv60djz9v630yg7k9vm5wwh3qvcs3edgw9jnrurhfx62zext4g0scjesv6 # HOST001_PUB
+creation_rules:
+  - path_regex: secrets/hosts/001/[^/]+\.yaml$
+    key_groups:
+      - age:
+          - *base
+          - *host001

@@ -3,6 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,6 +17,7 @@
     self,
     nixpkgs,
     disko,
+    sops-nix,
   }: let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -40,6 +45,7 @@
 
       host001 = mkSystem [
         disko.nixosModules.disko
+        sops-nix.nixosModules.sops
         ./nixos/hosts/001/configuration.nix
       ];
 
@@ -74,6 +80,7 @@
       packages = [
         pkgs.opentofu
         pkgs.helm
+        pkgs.awscli2
         ## TODO: delete later once we get dns up and running
         (pkgs.writeShellScriptBin "refresh-kubeconfig" ''
           set -euo pipefail

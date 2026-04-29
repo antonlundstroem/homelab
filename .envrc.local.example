@@ -20,3 +20,14 @@ export PROXMOX_VE_API_TOKEN="terraform@pve!homelab=00000000-0000-0000-0000-00000
 # Optional: if your token is attached to root@pam (needed for LXC feature flags
 # like keyctl — see CLAUDE.md "LAN DNS"), it looks like:
 # export PROXMOX_VE_API_TOKEN="root@pam!terraform=00000000-0000-0000-0000-000000000000"
+
+# ---- Garage (host001) S3 access ------------------------------------------
+# Used by:
+#   - OpenTofu's s3 backend (terraform/backend.tf) for remote state
+#   - `nix copy --to s3://nix-cache?...` for the binary cache
+#   - `aws --endpoint-url=http://192.168.1.100:3900 s3 ...` for raw object ops
+#
+# Generated on host001 with `garage key create --name laptop`. The output of
+# that command is the only place the secret access key is shown — copy it then.
+export AWS_ACCESS_KEY_ID="GK00000000000000000000"
+export AWS_SECRET_ACCESS_KEY="0000000000000000000000000000000000000000000000000000000000000000"
