@@ -8,26 +8,27 @@
 # When you add a new value here, also add a placeholder to this example file
 # so future-you (and Claude) know what the schema is.
 
-# ---- bpg/proxmox provider (terraform/provider.tf) -------------------------
-# The provider reads these PROXMOX_VE_* env vars natively — no TF_VAR needed.
-# Generate the API token in the Proxmox UI:
-#   Datacenter → Permissions → API Tokens → Add
-# Token format: <user>@<realm>!<token-id>=<secret-uuid>
-
-export PROXMOX_VE_ENDPOINT="https://192.168.1.100:8006/"
-export PROXMOX_VE_API_TOKEN="terraform@pve!homelab=00000000-0000-0000-0000-000000000000"
-
-# Optional: if your token is attached to root@pam (needed for LXC feature flags
-# like keyctl — see CLAUDE.md "LAN DNS"), it looks like:
-# export PROXMOX_VE_API_TOKEN="root@pam!terraform=00000000-0000-0000-0000-000000000000"
-
 # ---- Garage (host001) S3 access ------------------------------------------
 # Used by:
-#   - OpenTofu's s3 backend (terraform/backend.tf) for remote state
+#   - OpenTofu's s3 backend (terraform/hosts/001/backend.tf) for remote state
 #   - `nix copy --to s3://nix-cache?...` for the binary cache
-#   - `aws --endpoint-url=http://192.168.1.100:3900 s3 ...` for raw object ops
+#   - `aws --endpoint-url=http://<host001-ip>:3900 s3 ...` for raw object ops
 #
 # Generated on host001 with `garage key create --name laptop`. The output of
 # that command is the only place the secret access key is shown — copy it then.
 export AWS_ACCESS_KEY_ID="GK00000000000000000000"
 export AWS_SECRET_ACCESS_KEY="0000000000000000000000000000000000000000000000000000000000000000"
+
+# ---- Incus provider (terraform/hosts/001/provider.tf) --------------------
+# The provider reads INCUS_* env vars natively — no TF_VAR needed.
+# Generate the trust token on host001 with:
+#   incus config trust add <client-name>
+export INCUS_REMOTE="host001"
+export INCUS_ADDR="https://<host001-ip>:8443"
+export INCUS_TOKEN="<trust-token-from-incus-config-trust-add>"
+
+# ---- Terraform variables (terraform/hosts/001/variables.tf) --------------
+# OpenTofu reads TF_VAR_<name> for each declared variable.
+export TF_VAR_SSH_HOMELAB_PUB_PATH="~/.ssh/homelab.pub"
+export TF_VAR_S3_BUCKET_ENDPOINT="http://<host001-ip>:3900"
+export TF_VAR_SERVICE_K3S_MAC="00:00:00:00:00:00"

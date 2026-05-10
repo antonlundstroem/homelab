@@ -8,14 +8,13 @@ terraform {
 }
 
 provider "incus" {
-  remote = {
-  }
-  # We're setting the Endpoint and API token in .envrc.local
-  insecure = true # set to false if using a valid TLS certificate
-}
+  generate_client_certificates = true
+  accept_remote_certificate    = true
 
-#INCUS_REMOTE - The name of the remote.
-#INCUS_ADDR - The address of the Incus remote.
-#INCUS_PROTOCOL - The server protocol to use.
-#INCUS_AUTHENTICATION_TYPE - Server authentication type.
-#INCUS_TOKEN - The trust token of the Incus remote.
+  # We're setting the remote in .envrc.local
+  #INCUS_REMOTE - The name of the remote.
+  #INCUS_ADDR - The address of the Incus remote.
+  #INCUS_PROTOCOL - The server protocol to use.
+  #INCUS_AUTHENTICATION_TYPE - Server authentication type.
+  #INCUS_TOKEN - The trust token of the Incus remote.
+}

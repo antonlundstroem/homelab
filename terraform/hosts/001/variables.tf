@@ -1,20 +1,13 @@
-variable "nixos_lxc_image_path" {
+variable "SSH_HOMELAB_PUB_PATH" {
   type        = string
-  description = "Path to the NixOS proxmox-lxc tarball built by the flake. Set via TF_VAR_nixos_lxc_image_path in .envrc."
+  description = "Path to the homelab ssh key"
+}
+variable "S3_BUCKET_ENDPOINT" {
+  type        = string
+  description = "s3 bucket endpoint to store state"
 }
 
-variable "k3s_server_vm_image_path" {
+variable "SERVICE_K3S_MAC" {
   type        = string
-  description = "Path to the NixOS k3s VM qcow2 built by the flake (.#proxmox-vm-k3s). Set via TF_VAR_k3s_server_vm_image_path in .envrc."
-}
-
-variable "nixos_dns_vm_image_path" {
-  type        = string
-  description = "Path to the NixOS dns VM qcow2 built by the flake (.#proxmox-vm-dns). Set via TF_VAR_nixos_dns_vm_image_path in .envrc."
-}
-
-variable "ssh_public_key_path" {
-  type        = string
-  description = "Path to the SSH public key to authorize as root on provisioned VMs. Used by nixos-anywhere bootstrap."
-  default     = "~/.ssh/homelab.pub"
+  description = "MAC address of the k3s service"
 }

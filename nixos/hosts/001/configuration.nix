@@ -2,8 +2,9 @@
   imports = [
     ./hardware-configuration.nix
     ./disko.nix
-    ./garage.nix
+    ./networking.nix
     ./incus.nix
+    ./garage.nix
   ];
 
   sops = {
@@ -13,7 +14,7 @@
     # account to chown to. Leave the secret as root:root 0400 — systemd reads
     # EnvironmentFile as root before dropping privileges to the dynamic user.
     secrets.garage_env = {
-      key  = "garage_env";
+      key = "garage_env";
       mode = "0400";
     };
   };
@@ -21,15 +22,10 @@
   # ZFS Support
   boot.supportedFilesystems = ["zfs"];
   boot.zfs.forceImportRoot = false;
-  networking.hostId = "856d208d";
 
   # Bootloader
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-
-  # Networking
-  networking.hostName = "host001";
-  networking.networkmanager.enable = true;
 
   # Time
   time.timeZone = "Europe/Stockholm";

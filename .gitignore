@@ -6,4 +6,5 @@
 /nixos-*
 /nixos-vm
 .kubeconfig
-nixos/lan.nix
+nixos/hosts/**/certs/
+nixos/settings/networking/configuration.nix

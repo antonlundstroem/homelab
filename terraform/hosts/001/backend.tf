@@ -5,7 +5,7 @@ terraform {
     region = "garage"
 
     endpoints = {
-      s3 = "http://192.168.1.100:3900"
+      s3 = var.S3_BUCKET_ENDPOINT
     }
 
     # Garage isn't AWS — silence the AWS-specific validations.

@@ -65,6 +65,16 @@
           mountpoint = "/var/log";
           options.mountpoint = "legacy";
         };
+        incus = {
+          type = "zfs_fs";
+          mountpoint = "/var/lib/incus";
+          options.mountpoint = "legacy";
+        };
+        #garage = {
+        #  type = "zfs_fs";
+        #  mountpoint = "/var/lib/garage";
+        #  options.mountpoint = "legacy";
+        #};
       };
     };
   };
