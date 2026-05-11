@@ -7,7 +7,7 @@ resource "incus_instance" "k3s" {
   config = {
     "security.secureboot" = "false"
     "limits.cpu"          = "4"
-    "limits.memory"       = "6GiB"
+    "limits.memory"       = "8GiB"
   }
 
   wait_for { type = "agent" }
