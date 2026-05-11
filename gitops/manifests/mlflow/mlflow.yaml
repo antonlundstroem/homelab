@@ -17,8 +17,12 @@ spec:
       containers:
         - name: mlflow
           image: ghcr.io/mlflow/mlflow #:v3.12.0-full
+          args:
+            - mlflow
+            - server
+            - --host 0.0.0.0
           ports:
-            - containerPort: 8124
+            - containerPort: 5000
           resources:
             requests:
               cpu: 200m
@@ -32,8 +36,8 @@ spec:
   selector:
     app: mlflow
   ports:
-    - port: 8124
-      targetPort: 8124
+    - port: 5000
+      targetPort: 5000
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
