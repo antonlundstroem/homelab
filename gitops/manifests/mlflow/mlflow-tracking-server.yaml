@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mlflow
+  name: mlflow-tracking-server
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: mlflow
+      app: mlflow-tracking-server
   template:
     metadata:
       labels:
-        app: mlflow
+        app: mlflow-tracking-server
     spec:
       containers:
-        - name: mlflow
+        - name: mlflow-tracking-server
           image: ghcr.io/mlflow/mlflow #:v3.12.0-full
           args:
             - mlflow
             - server
-            - --host 0.0.0.0
+            - --host=0.0.0.0
           ports:
             - containerPort: 5000
           resources:
@@ -31,10 +31,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mlflow
+  name: mlflow-tracking-server
 spec:
   selector:
-    app: mlflow
+    app: mlflow-tracking-server
   ports:
     - port: 5000
       targetPort: 5000
@@ -42,7 +42,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: mlflow
+  name: mlflow-tracking-server
 spec:
   ingressClassName: nginx
   rules:
@@ -53,6 +53,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: mlflow
+                name: mlflow-tracking-server
                 port:
                   number: 8124
