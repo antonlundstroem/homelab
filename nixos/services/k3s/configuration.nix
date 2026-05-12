@@ -87,8 +87,9 @@ in {
             server:
               ingress:
                 enabled: true
-                ingressClassName: nginx
-                hostname: argocd.lan
+                ingressClassName: tailscale
+                hostname: argocd
+                tls: true
           '';
         };
       };

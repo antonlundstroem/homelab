@@ -43,7 +43,7 @@ When to actually re-run Terraform: first-time provisioning, you changed somethin
 
 ### GitOps layout
 
-The k3s VM bootstraps itself into a working GitOps state with no manual `kubectl` step. `nixos/services/k3s/configuration.nix` writes three resources into the k3s auto-deploy directory via `services.k3s.manifests`: an `ingress-nginx` `HelmChart`, an `argo-cd` `HelmChart` (with an Ingress at `argocd.k3s.local`), and a single root `Application` pointing at `gitops/argocd/` in this repo. From there ArgoCD takes over: every YAML in `gitops/argocd/` is a child `Application` describing one workload, and each one references its actual manifests under `gitops/manifests/<name>/`. To add a new service: drop manifests into `gitops/manifests/<name>/`, add `gitops/argocd/<name>.yaml` pointing at it, commit — no rebuild required.
+The k3s VM bootstraps itself into a working GitOps state with no manual `kubectl` step. `nixos/services/k3s/configuration.nix` writes three resources into the k3s auto-deploy directory via `services.k3s.manifests`: an `ingress-nginx` `HelmChart`, an `argo-cd` `HelmChart` (with a Tailscale Ingress exposed at `argocd.<tailnet>.ts.net`), and a single root `Application` pointing at `gitops/argocd/` in this repo. From there ArgoCD takes over: every YAML in `gitops/argocd/` is a child `Application` describing one workload, and each one references its actual manifests under `gitops/manifests/<name>/`. To add a new service: drop manifests into `gitops/manifests/<name>/`, add `gitops/argocd/<name>.yaml` pointing at it, commit — no rebuild required.
 
 ### Workload image strategy
 
