@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: arc-mlops-pat
+  namespace: arc-runners
+spec:
+  encryptedData:
+    github_token: AgBjsEyRg83DDHDA4opcttjlHpPfYT0L/5XfmtqUzPljO9eMB9QxBXIeM1kGgQKuB3bq49aLyvNOuqZT8vXJ6eeV1ppNHG8U39PlE60crxzA0Cy8KjEdh9QONKDrQddKbhFS8oJqUlyWuCQXEVNqdettHFUSlCAEupruP/ribktWD9G2C3I0qBWk6nGWrynIvo2eUFmtgpWAi+22PLs4LoBqy7njybvxfKMW6AJGhrinPHQT1+ekprqpqdYI4HNJft+e4KaLC1qKU15WWcEbVEzGU2ZctxbFjEkbYk7Sui2QatCLWIssE6T9gKX0cOcgQyX1BIh0tqpQKHlNoPq3KNAXeCXZk+0ccbbUOAfp8fopnFYp5pmMauGHwDok6h18CKmnUtjJ+tfjidO0k/0YOHiKgPvOkZWJj3jILkOfsok1j/HJLbii8C2vmW44ztFMHA85VOtjsYBoSbRYBcbDXBegD1Kz1ICJyImkOIDI7gYGL2KJIl/WxVT2Mk82A9sBVQjLOMSrwlz65bMYisKnDVbG/HF9zuNKrqQd7ok0VvFOOz1VVG0itpDqoKpwfAkwtwaaqgUaUwMY3Ym+wM6W9k2N4tBHiN+KKYhH6d5+h13oU4b6pXUZM+Ux0M5SDAqjkOQYfcS0/tl/evdd+inH90a2PsZPn3+TWODYzA5rlp3T/EvdjWrNvqEtUT6h7Jh6aErl6aNKVq/QnBZ9R/vav9jhoHaNAM9/UqYDgsCfIYy4kEi1MlGXmkGMKOzQNk5t7lIaLQ216pHdvkviwYpTynPizovkHJEDKiiqjPKydPPrxESw7xI74EHv9JaUr2c=
+  template:
+    metadata:
+      name: arc-mlops-pat
+      namespace: arc-runners
