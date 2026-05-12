@@ -47,7 +47,7 @@ spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: mlflow
+      name: mlflow-tracking-server
       port: 5000
   tls:
     - hosts:
