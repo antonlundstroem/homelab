@@ -48,7 +48,8 @@ spec:
   defaultBackend:
     service:
       name: mlflow-tracking-server
-      port: 5000
+      port:
+        number: 5000
   tls:
     - hosts:
         - mlflow
