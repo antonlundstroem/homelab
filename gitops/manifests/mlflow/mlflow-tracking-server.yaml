@@ -17,10 +17,19 @@ spec:
       containers:
         - name: mlflow-tracking-server
           image: ghcr.io/mlflow/mlflow #:v3.12.0-full
+          command: ["/bin/sh", "-c"]
           args:
-            - mlflow
-            - server
-            - --host=0.0.0.0
+            - |
+              pip install --quiet psycopg2-binary && \
+              exec mlflow server \
+                --host=0.0.0.0 \
+                --backend-store-uri "$BACKEND_STORE_URI"
+          env:
+            - name: BACKEND_STORE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mlflow-db-app
+                  key: uri
           ports:
             - containerPort: 5000
           resources:
