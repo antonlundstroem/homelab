@@ -44,15 +44,11 @@ kind: Ingress
 metadata:
   name: mlflow-tracking-server
 spec:
-  ingressClassName: nginx
-  rules:
-    - host: mlflow.lan
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: mlflow-tracking-server
-                port:
-                  number: 8124
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: mlflow
+      port: 5000
+  tls:
+    - hosts:
+        - mlflow
