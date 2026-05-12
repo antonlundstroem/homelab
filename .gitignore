@@ -8,3 +8,4 @@
 .kubeconfig
 nixos/hosts/**/certs/
 nixos/settings/networking/configuration.nix
+secrets/sealed-secrets

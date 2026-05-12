@@ -58,6 +58,8 @@
         pkgs.opentofu
         pkgs.helm
         pkgs.awscli2
+        pkgs.gh
+        pkgs.kubeseal
         ## TODO: delete later once we get dns up and running
         (pkgs.writeShellScriptBin "refresh-kubeconfig" ''
           set -euo pipefail
