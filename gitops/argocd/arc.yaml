@@ -38,6 +38,9 @@ spec:
         githubConfigSecret: arc-mlops-pat
         minRunners: 0
         maxRunners: 3
+        controllerServiceAccount:
+          namespace: arc-systems
+          name: arc-controller-gha-rs-controller
   destination:
     server: https://kubernetes.default.svc
     namespace: arc-runners
