@@ -28,8 +28,8 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
-    # Uncomment when workflows need to reach in-cluster MLflow.
-    # - to:
-    #     - namespaceSelector:
-    #         matchLabels:
-    #           kubernetes.io/metadata.name: mlflow
+
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mlflow
