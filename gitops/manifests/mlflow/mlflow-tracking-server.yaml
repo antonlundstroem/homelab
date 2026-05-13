@@ -20,16 +20,31 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              pip install --quiet psycopg2-binary && \
+              pip install --quiet psycopg2-binary boto3 && \
               exec mlflow server \
                 --host=0.0.0.0 \
-                --backend-store-uri "$BACKEND_STORE_URI"
+                --backend-store-uri "$BACKEND_STORE_URI" \
+                --default-artifact-root s3://mlflow/
           env:
             - name: BACKEND_STORE_URI
               valueFrom:
                 secretKeyRef:
                   name: mlflow-db-app
                   key: uri
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: http://rustfs-svc.rustfs.svc.cluster.local:9000
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-creds
+                  key: RUSTFS_ACCESS_KEY
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-creds
+                  key: RUSTFS_SECRET_KEY
           ports:
             - containerPort: 5000
           resources:

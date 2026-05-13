@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rustfs-create-mlflow-bucket
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 20
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: aws
+          image: amazon/aws-cli:2.17.0
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-creds
+                  key: RUSTFS_ACCESS_KEY
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-creds
+                  key: RUSTFS_SECRET_KEY
+            - name: AWS_EC2_METADATA_DISABLED
+              value: "true"
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              ENDPOINT=http://rustfs-svc.rustfs.svc.cluster.local:9000
+              until aws --endpoint-url "$ENDPOINT" s3api list-buckets >/dev/null 2>&1; do
+                echo "waiting for rustfs..."
+                sleep 3
+              done
+              aws --endpoint-url "$ENDPOINT" s3api create-bucket --bucket mlflow 2>&1 \
+                | grep -v "BucketAlreadyOwnedByYou\|BucketAlreadyExists" || true
+              aws --endpoint-url "$ENDPOINT" s3api head-bucket --bucket mlflow
+              echo "bucket mlflow ready"
