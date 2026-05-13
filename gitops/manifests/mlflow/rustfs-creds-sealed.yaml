@@ -11,4 +11,4 @@ spec:
   template:
     metadata:
       name: rustfs-creds
-      namespace: rustfs
+      namespace: mlflow
