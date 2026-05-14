@@ -6,12 +6,12 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://argoproj.github.io/argo-helm
+    repoURL: ghcr.io/argoproj/argo-helm/argocd-image-updater
     chart: argo/argocd-image-updater
     targetRevision: 1.1.5
   destination:
     server: https://kubernetes.default.svc
-    namespace: kserve
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
