@@ -7,8 +7,8 @@ spec:
   project: default
   source:
     repoURL: ghcr.io/kserve/charts
-    chart: kserve-crds
-    targetRevision: v0.17.0-rc0
+    chart: kserve-crd
+    targetRevision: v0.18.0
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve
