@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: ghcr.io/kserve/charts
     chart: kserve-crd
-    targetRevision: v0.18.0
+    targetRevision: v0.17.0-rc0
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve
@@ -31,6 +31,13 @@ spec:
     repoURL: ghcr.io/kserve/charts
     chart: kserve
     targetRevision: v0.17.0-rc0
+    helm:
+      valuesObject:
+        kserve:
+          controller:
+            deploymentMode: RawDeployment
+          certManager:
+            enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve
