@@ -49,9 +49,6 @@
       ];
     };
 
-    #packages.${system} = {
-    #};
-
     devShells.${system}.default = pkgs.mkShell {
       packages = [
         pkgs.sops
