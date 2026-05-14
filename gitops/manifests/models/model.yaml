@@ -1,0 +1,35 @@
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: rustfs-creds
+  namespace: models
+spec:
+  encryptedData:
+    AWS_ACCESS_KEY_ID: AgDGQICRJV+K8XrffEuWKJUXQJ8mrKqlFvO24TL/Qc86CrDa9rcvgW+pl6+SphgKWnBb4O2jB6T0k139IPJ8eCyyGCgVYWLwI4EeWXQkxGWOlk73iZM7s6ISZqIY6PZ9+Z2PQgkq9lcRBf0tTBYXCV7HPyMRdjJoh4QHPTYSwF+18RZnRhYnXDRzf6kroHD5txNwJRrXs1ab1VN7q28d32B5WNkPslQsGkF8zu+JKd47V6/9BqmuxvQLM4MVynrSpGUfJ8ha+fKPBY1CHlTE2BnzqqTMpp3MD7cHmvNfONiK69RFSZ4JRpJiK6HFSL8jFgvMtNsvOtYt4AfMR0yHBO7bVww0APCc5MtFT1Q5U0PqEGrMqRhTnY593axy/EZjfGpdRVn5r25cCKDpZokkMIcMoKZOYDUTd8jEzEmhb+5kVb816u/78fVY0WvKe5N/mhMa4/7jpBCSQ5jU0bNtmqWlEugbYolbe7uGV0/oUhdxOXuLeOYuPrgU0yHi2AP+ADcVNRt0Dm1pDz8tUMY1Cd0VuBQ1BbMpd9f54Pd/2Qn755H5jPyo5RsMaN3VDEs3N2VmrZ6K0KwyFdlUWoMit+me3rsatTaEXPzxgBDismY53SgMpKBqT/AyZKCpmExm6oQsvPGnNj4kYxsguVAw4ldPtif7qJAu8IUq7lyx8slFsut4nYARKJAbb/9z7QH9cn1aAuMXutkkl154vF47nwGiQWGH0pPfYAwm6rxdPUtPiudWQmF7yXai
+    AWS_SECRET_ACCESS_KEY: AgAXXn5DsoNBUXfB9XXFZgPD+xSAiocWhcC2kRpxhWsLZuLwcrRdpgrQUdr3p7agDBzVcjNQIC4a7Arn8Sr7+QIpcYnAs5iEY0Ob5/SXUL3sLBUnvxvJD/Sd87LI9WT/HdIJqa234f4QSjCKAnMGaDgvz5/Kslve5KtKDYgSH9w3jGtqbd6JDaFqey3iQOo8IpbjM7TIz0PFv+J+Q2mjpQcr5ECWkdtuLQSwRT5hBk5TSxmq6Fo/+bIWt7o9QPS0Jd3KOZrgs7Kp9Xn7K1PQlGEgxVjDcoBRo7+vGaxoWsDugPoHPp2cpoG2JgJJNS7OKdwSGI4gnaQqSDcGgJUOCmBZDXCkPweFetN73kMrdzdTLpWAkPvy22q90RSO0ziF5wYB1po9IhpRiQhYkgIUV8OEpr97dZ654/k3Voh38bdo/yUb8PRMj5XS8nkbX4f6V5L6lra9TGymhyh2Qm+1C19Bl0YU3TsSKheR0Hg0cWk9JmD46m42+0Go4W6XvaYQzRAQaqmvOzZHnKG988gcTu9wwg1Y7jSRA2liWpFYjF8Q4wSmnhkpLeYrNVDPURHhJkcmys/7rOhQBgLjW9VG6z0ElVvbI3SdBsBOJS0QcKYT4THAtJ6nplnPqL84TFY9Po5NIgrnzkmmvhv1zqYUFoJMu1jhQZFNWmtXAA7ZUwIC81OFO8obuQ+ikFPIcnW1SbiPHc09HlhmIR/1i5qZ/G5IKdHyRUPoAeBr+wTD0InZ/eg2/d9p/o8t
+  template:
+    metadata:
+      name: rustfs-creds
+      namespace: models
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-rustfs
+  namespace: models
+secrets:
+  - name: rustfs-creds
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: track-a-001
+  namespace: models
+  annotations:
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    serviceAccountName: sa-rustfs
+    model:
+      modelFormat: { name: sklearn }
+      storageUri: s3://mlflow/models/iris/1 # or gs://, https://, pvc://, etc.
