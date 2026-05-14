@@ -32,5 +32,7 @@ spec:
     - to:
         - namespaceSelector:
             matchLabels:
-              - kubernetes.io/metadata.name: mlflow
-              - kubernetes.io/metadata.name: rustfs
+              kubernetes.io/metadata.name: mlflow
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: rustfs
