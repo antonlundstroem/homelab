@@ -6,8 +6,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: ghcr.io/argoproj/argo-helm/argocd-image-updater
-    chart: argo/argocd-image-updater
+    repoURL: ghcr.io/argoproj/argo-helm
+    chart: argocd-image-updater
     targetRevision: 1.1.5
   destination:
     server: https://kubernetes.default.svc
