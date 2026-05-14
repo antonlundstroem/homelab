@@ -53,7 +53,7 @@
       packages = [
         pkgs.sops
         pkgs.opentofu
-        pkgs.helm
+        pkgs.kubernetes-helm
         pkgs.awscli2
         pkgs.gh
         pkgs.kubeseal
