@@ -24,11 +24,7 @@ spec:
               exec mlflow server \
                 --host=0.0.0.0 \
                 --backend-store-uri "$BACKEND_STORE_URI" \
-                --serve-artifacts \
-                --artifacts-destination s3://mlflow/
-            # TODO: add --allowed-hosts to only spec arc runner and laptop?
-            # --default-artifact-root s3://mlflow/
-
+                --default-artifact-root s3://mlflow/
           env:
             - name: BACKEND_STORE_URI
               valueFrom:
