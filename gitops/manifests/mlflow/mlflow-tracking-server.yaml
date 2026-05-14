@@ -25,6 +25,9 @@ spec:
                 --host=0.0.0.0 \
                 --backend-store-uri "$BACKEND_STORE_URI" \
                 --default-artifact-root s3://mlflow/
+          envFronm:
+            - secretRef:
+                name: mlflow-secrets
           env:
             - name: BACKEND_STORE_URI
               valueFrom:
