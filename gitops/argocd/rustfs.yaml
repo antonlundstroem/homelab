@@ -21,7 +21,7 @@ spec:
         secret:
           existingSecret: rustfs-creds
         ingress:
-          enabled: false
+          enabled: false  # exposed via gitops/manifests/rustfs/rustfs-ingress.yaml
         storageclass:
           name: local-path
           dataStorageSize: 10Gi
