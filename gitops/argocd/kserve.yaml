@@ -36,8 +36,6 @@ spec:
         kserve:
           controller:
             deploymentMode: RawDeployment
-          certManager:
-            enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve
