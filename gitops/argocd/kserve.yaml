@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: kserve-crds
-  namespace: kserve
+  namespace: argocd
 spec:
   project: default
   source:
@@ -24,7 +24,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: kserve
-  namespace: kserve
+  namespace: argocd
 spec:
   project: default
   source:
