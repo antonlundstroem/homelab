@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-workflows
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: ghcr.io/argoproj/argo-helm
+    chart: argo-workflows
+    targetRevision: 1.0.14
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
