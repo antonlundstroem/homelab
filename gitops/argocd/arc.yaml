@@ -38,6 +38,8 @@ spec:
         githubConfigSecret: arc-mlops-pat
         minRunners: 0
         maxRunners: 3
+        containerMode:
+          type: dind
         controllerServiceAccount:
           namespace: arc-systems
           name: arc-controller-gha-rs-controller
