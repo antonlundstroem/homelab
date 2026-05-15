@@ -11,10 +11,14 @@ kind: InferenceService
 metadata:
   name: track-a-001
   namespace: models
-  #annotations:
-  #serving.kserve.io/deploymentMode: RawDeployment
+  annotations:
+    #serving.kserve.io/deploymentMode: Standard
+    serving.kserve.io/autoscalerClass: none
 spec:
   predictor:
+    # For non-hpa setting
+    minReplicas: 1
+    maxReplicas: 1
     serviceAccountName: sa-rustfs
     model:
       modelFormat:
