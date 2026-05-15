@@ -37,6 +37,7 @@ spec:
           controller:
             deploymentMode: Standard
             gateway:
+              disableIstioVirtualHost: true
               disableIngressCreation: true
   destination:
     server: https://kubernetes.default.svc
