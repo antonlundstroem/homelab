@@ -13,6 +13,7 @@ spec:
       values: |
         server:
           ingress:
+            enabled: true
             ingressClassName: "tailscale"
 
   destination:
