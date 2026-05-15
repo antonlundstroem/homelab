@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: ghcr.io/kserve/charts
     chart: kserve-crd
-    targetRevision: v0.17.0-rc0
+    targetRevision: v0.17.0
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve
@@ -23,19 +23,19 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: kserve
+  name: kserve-resources
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: ghcr.io/kserve/charts
-    chart: kserve
-    targetRevision: v0.17.0-rc0
+    chart: kserve-resources
+    targetRevision: v0.17.0
     helm:
       valuesObject:
         kserve:
           controller:
-            deploymentMode: RawDeployment
+            deploymentMode: Standard
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve
@@ -46,3 +46,30 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
+#---
+#apiVersion: argoproj.io/v1alpha1
+#kind: Application
+#metadata:
+#  name: kserve
+#  namespace: argocd
+#spec:
+#  project: default
+#  source:
+#    repoURL: ghcr.io/kserve/charts
+#    chart: kserve
+#    targetRevision: v0.17.0
+#    helm:
+#      valuesObject:
+#        kserve:
+#          controller:
+#            deploymentMode: Standard
+#  destination:
+#    server: https://kubernetes.default.svc
+#    namespace: kserve
+#  syncPolicy:
+#    automated:
+#      prune: true
+#      selfHeal: true
+#    syncOptions:
+#      - CreateNamespace=true
+#      - ServerSideApply=true
