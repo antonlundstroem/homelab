@@ -12,6 +12,8 @@ spec:
     helm:
       values: |
         server:
+          authModes:
+            - server
           ingress:
             enabled: true
             ingressClassName: "tailscale"
