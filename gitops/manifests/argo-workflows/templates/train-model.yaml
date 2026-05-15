@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterWorkflowTemplate
+metadata:
+  name: train-model
+spec:
+  entrypoint: main
+  serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 86400
+  podGC:
+    strategy: OnWorkflowSuccess
+  arguments:
+    parameters:
+      - name: track
+      - name: model
+      - name: gitRevision
+        value: HEAD
+      - name: image
+        value: "ghcr.io/antonlundstroem/mlops/{{workflow.parameters.track}}-{{workflow.parameters.model}}:{{workflow.parameters.gitRevision}}"
+  templates:
+    - name: main
+      container:
+        image: "{{workflow.parameters.image}}"
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow-tracking-server.mlflow.svc.cluster.local:5000
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: "{{workflow.parameters.track}}/{{workflow.parameters.model}}"
+          - name: MLFLOW_REGISTERED_MODEL_NAME
+            value: "{{workflow.parameters.track}}-{{workflow.parameters.model}}"
+          - name: GIT_REVISION
+            value: "{{workflow.parameters.gitRevision}}"
+          - name: MLFLOW_S3_ENDPOINT_URL
+            value: http://rustfs-svc.rustfs.svc.cluster.local:9000
+          - name: AWS_DEFAULT_REGION
+            value: us-east-1
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: rustfs-secrets
+                key: AWS_ACCESS_KEY_ID
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: rustfs-secrets
+                key: AWS_SECRET_ACCESS_KEY
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
