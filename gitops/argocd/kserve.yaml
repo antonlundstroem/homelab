@@ -36,8 +36,8 @@ spec:
         kserve:
           controller:
             deploymentMode: Standard
-          gateway:
-            disableIstioVirtualHost: true
+            gateway:
+              disableIstioVirtualHost: true
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve
