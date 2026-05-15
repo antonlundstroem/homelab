@@ -22,7 +22,7 @@ spec:
             ingressClassName: "tailscale"
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: argo-workflows
   syncPolicy:
     automated:
       prune: true
