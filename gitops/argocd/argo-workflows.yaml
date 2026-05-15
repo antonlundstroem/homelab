@@ -34,7 +34,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argo-workflows-templates
+  name: argo-workflows-config
   namespace: argocd
 spec:
   project: default
