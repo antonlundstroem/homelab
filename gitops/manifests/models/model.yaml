@@ -11,8 +11,8 @@ kind: InferenceService
 metadata:
   name: track-a-001
   namespace: models
-  annotations:
-    serving.kserve.io/deploymentMode: RawDeployment
+  #annotations:
+  #serving.kserve.io/deploymentMode: RawDeployment
 spec:
   predictor:
     serviceAccountName: sa-rustfs
