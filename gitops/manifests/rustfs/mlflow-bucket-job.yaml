@@ -18,12 +18,12 @@ spec:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
-                  name: rustfs-creds
+                  name: rustfs-secrets
                   key: RUSTFS_ACCESS_KEY
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: rustfs-creds
+                  name: rustfs-secrets
                   key: RUSTFS_SECRET_KEY
             - name: AWS_EC2_METADATA_DISABLED
               value: "true"

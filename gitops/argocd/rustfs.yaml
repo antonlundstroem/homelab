@@ -19,7 +19,7 @@ spec:
             enabled: false
         replicaCount: 1
         secret:
-          existingSecret: rustfs-creds
+          existingSecret: rustfs-secrets
         ingress:
           enabled: false  # exposed via gitops/manifests/rustfs/rustfs-ingress.yaml
         storageclass:
