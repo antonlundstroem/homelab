@@ -37,10 +37,7 @@ spec:
           controller:
             deploymentMode: Standard
             gateway:
-              disableIstioVirtualHost: true
-              #domain: <tailnet>
-              ingressGateway:
-                className: tailscale
+              disableIngressCreation: true
   destination:
     server: https://kubernetes.default.svc
     namespace: kserve

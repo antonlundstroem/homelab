@@ -15,3 +15,14 @@ spec:
       modelFormat:
         name: sklearn
       storageUri: "s3://mlflow/2/models/m-37685d2d9dc14a9ca80e552c647172d1/artifacts"
+---
+# kserve's Ingress uses rules[].host which Tailscale's controller ignores;
+# we disable kserve ingress and expose the predictor Service via SSA patch instead.
+apiVersion: v1
+kind: Service
+metadata:
+  name: track-a-001-predictor
+  namespace: models
+  annotations:
+    tailscale.com/expose: "true"
+    tailscale.com/hostname: track-a-001
