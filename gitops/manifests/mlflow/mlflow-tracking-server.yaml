@@ -27,7 +27,9 @@ spec:
                 --default-artifact-root s3://mlflow/
           envFrom:
             - secretRef:
-                name: mlflow-secrets
+                name: tailscale-secrets
+            - secretRef:
+                name: rustfs-secrets
           env:
             - name: BACKEND_STORE_URI
               valueFrom:
@@ -38,16 +40,6 @@ spec:
               value: http://rustfs-svc.rustfs.svc.cluster.local:9000
             - name: AWS_DEFAULT_REGION
               value: us-east-1
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: rustfs-creds
-                  key: RUSTFS_ACCESS_KEY
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: rustfs-creds
-                  key: RUSTFS_SECRET_KEY
           ports:
             - containerPort: 5000
           resources:
