@@ -1,21 +1,31 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Application
+kind: ApplicationSet
 metadata:
   name: mlops
   namespace: argocd
 spec:
-  project: default
-  source:
-    repoURL: https://github.com/antonlundstroem/mlops.git
-    path: manifests/*/*
-    targetRevision: HEAD
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: mlops
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
+  generators:
+    - git:
+        repoURL: https://github.com/antonlundstroem/mlops.git
+        revision: HEAD
+        directories:
+          - path: manifests/*/*
+  template:
+    metadata:
+      name: "{{path[1]}}-{{path.basenameNormalized}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/antonlundstroem/mlops.git
+        path: "{{path}}"
+        targetRevision: HEAD
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: mlops
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

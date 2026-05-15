@@ -24,4 +24,4 @@ spec:
     - secretKey: USERNAME
       remoteRef: { key: github-secrets, property: username }
     - secretKey: PASSWORD
-      remoteRef: { key: github-secrets, property: token }
+      remoteRef: { key: github-secrets, property: mlops_token }
