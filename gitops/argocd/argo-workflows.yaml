@@ -42,6 +42,8 @@ spec:
     repoURL: https://github.com/antonlundstroem/homelab.git
     path: gitops/manifests/argo-workflows
     targetRevision: HEAD
+    directory:
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
     namespace: argo-workflows
