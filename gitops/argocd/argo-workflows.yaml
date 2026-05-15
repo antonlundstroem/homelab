@@ -9,6 +9,12 @@ spec:
     repoURL: ghcr.io/argoproj/argo-helm
     chart: argo-workflows
     targetRevision: 1.0.14
+    helm:
+      values: |
+        server:
+          ingress:
+            ingressClassName: "tailscale"
+
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
