@@ -18,13 +18,23 @@ spec:
             effect: NoSchedule
 
         # CDI mode: device plugin advertises GPUs as CDI references; containerd
-        # reads /var/run/cdi/nvidia-container-toolkit.json and injects devices.
+        # (≥2.0, CDI on by default) reads /var/run/cdi/nvidia-container-toolkit.json
+        # and injects devices + driver libs into workload pods.
         deviceListStrategy: cdi-annotations
-        nvidiaDriverRoot: /run/opengl-driver
+
+        # Point at the FHS-shaped wrapper provisioned on the host (see
+        # nixos/nodes/gpu01/configuration.nix), NOT at /run/opengl-driver
+        # directly. The chart bind-mounts this path as /driver-root in the
+        # pod; the plugin's NVML probe walks /driver-root/usr/lib64/... for
+        # libnvidia-ml.so.1, which only resolves because the wrapper exposes
+        # /run/opengl-driver/lib at .../usr/lib64.
+        nvidiaDriverRoot: /var/lib/nvidia-driver-root
 
         # The plugin pod itself still has to enumerate GPUs via NVML, which
-        # needs /dev/nvidiactl. Annotate the pod so containerd injects it from
-        # the CDI spec on pod start (rather than hostPath mounting /dev).
+        # needs /dev/nvidiactl + the driver libs to actually dlopen. The CDI
+        # annotation tells containerd to apply the CDI spec on pod start,
+        # which mounts the /nix/store driver path and runs update-ldcache so
+        # the symlinks under /driver-root resolve at load time.
         podAnnotations:
           cdi.k8s.io/gpu: "nvidia.com/gpu=all"
 
@@ -36,10 +46,13 @@ spec:
               - operator: Exists
 
         # GPU Feature Discovery — adds nvidia.com/gpu.{product,memory,...}
-        # labels. Needs the same NixOS driver root for its own NVML calls.
+        # labels. Same bootstrap story as the plugin: FHS wrapper for the
+        # NVML probe + CDI annotation so dlopen actually resolves.
         gfd:
           enabled: true
-          nvidiaDriverRoot: /run/opengl-driver
+          nvidiaDriverRoot: /var/lib/nvidia-driver-root
+          podAnnotations:
+            cdi.k8s.io/gpu: "nvidia.com/gpu=all"
           tolerations:
             - key: nvidia.com/gpu
               operator: Equal
