@@ -55,6 +55,15 @@ spec:
         # CDI host device". The real device nodes live at /dev/nvidia*.
         nvidiaDevRoot: /
 
+        # The CDI spec generated for workload pods embeds createContainer
+        # hooks that exec nvidia-ctk on the host (to create symlinks,
+        # update ldcache, etc.). Default is /usr/bin/nvidia-ctk which
+        # doesn't exist on NixOS. /run/current-system/sw/bin/nvidia-ctk
+        # is stable across rebuilds, populated by adding the toolkit to
+        # environment.systemPackages (see nixos/nodes/gpu01/configuration.nix).
+        cdi:
+          nvidiaHookPath: /run/current-system/sw/bin/nvidia-ctk
+
         # Node Feature Discovery — labels nodes by hardware (PCI/CPU).
         nfd:
           enabled: true
