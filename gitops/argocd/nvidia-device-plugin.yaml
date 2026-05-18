@@ -17,20 +17,22 @@ spec:
             value: "true"
             effect: NoSchedule
 
-        # Node Feature Discovery — detects PCI/CPU features on every node and
-        # writes feature.node.kubernetes.io/* labels (incl. pci-10de.present
-        # for NVIDIA hardware).
+        # CDI mode: device plugin advertises GPUs as CDI references; containerd
+        deviceListStrategy: cdi-annotations
+        nvidiaDriverRoot: /run/opengl-driver
+
+        # Node Feature Discovery — labels nodes by hardware (PCI/CPU).
         nfd:
           enabled: true
           worker:
             tolerations:
               - operator: Exists
 
-        # GPU Feature Discovery — runs only on nodes NFD flagged as having
-        # NVIDIA hardware, adds nvidia.com/gpu.{product,memory,present,...}.
-        # The device plugin's default affinity keys off these.
+        # GPU Feature Discovery — adds nvidia.com/gpu.{product,memory,...}
+        # labels. Needs the same NixOS driver root for its own NVML calls.
         gfd:
           enabled: true
+          nvidiaDriverRoot: /run/opengl-driver
           tolerations:
             - key: nvidia.com/gpu
               operator: Equal
