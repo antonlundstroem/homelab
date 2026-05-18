@@ -12,6 +12,8 @@ in {
     ./networking.nix
   ];
 
+  nixpkgs.config.allowUnfree = true;
+
   sops = {
     defaultSopsFile = ../../../secrets/nodes/gpu01/secrets.yaml;
     secrets.k3s-token = {
@@ -23,14 +25,14 @@ in {
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  #services.xserver.videoDrivers = ["nvidia"];
-  #hardware.nvidia = {
-  #  modesetting.enable = true;
-  #  open = false; # use proprietary driver
-  #  package = config.boot.kernelPackages.nvidiaPackages.stable;
-  #};
-  #hardware.nvidia-container-toolkit.enable = true;
-  #virtualisation.containerd.enable = true;
+  services.xserver.videoDrivers = ["nvidia"];
+  hardware.nvidia = {
+    modesetting.enable = true;
+    open = false; # use proprietary driver
+    package = config.boot.kernelPackages.nvidiaPackages.stable;
+  };
+  hardware.nvidia-container-toolkit.enable = true;
+  virtualisation.containerd.enable = true;
 
   services.k3s = {
     enable = true;
