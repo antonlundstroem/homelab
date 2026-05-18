@@ -19,6 +19,12 @@ spec:
         value: "ghcr.io/antonlundstroem/mlops/{{workflow.parameters.track}}-{{workflow.parameters.model}}:{{workflow.parameters.gitRevision}}"
   templates:
     - name: main
+      # Bypass taint
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       container:
         image: "{{workflow.parameters.image}}"
         imagePullPolicy: IfNotPresent
@@ -52,3 +58,5 @@ spec:
           limits:
             cpu: "2"
             memory: "4Gi"
+            # Set limit to 1 gpu
+            nvidia.com/gpu: 1
