@@ -45,20 +45,6 @@ in {
       # so non-GPU workloads can't land here.
       "--node-taint=nvidia.com/gpu=true:NoSchedule"
     ];
-
-    # k3s autodetect can't find nvidia-container-runtime under Nix (it checks
-    # /usr/bin and a couple of fixed paths, not $PATH). Extend the default
-    # containerd template with an explicit nvidia runtime, absolute path.
-    containerdConfigTemplate = ''
-      {{ template "base" . }}
-
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
-        runtime_type = "io.containerd.runc.v2"
-
-      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
-        BinaryName = "${pkgs.nvidia-container-toolkit.tools}/bin/nvidia-container-runtime"
-        SystemdCgroup = true
-    '';
   };
 
   # ZFS Support
@@ -87,13 +73,7 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  environment.systemPackages = with pkgs; [
-    vim
-    git
-    curl
-    nvidia-container-toolkit
-    nvidia-container-toolkit.tools
-  ];
+  environment.systemPackages = with pkgs; [vim git curl];
 
   system.stateVersion = "25.11";
   nix.settings = {
