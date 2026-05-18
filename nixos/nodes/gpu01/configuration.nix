@@ -34,6 +34,29 @@ in {
   hardware.nvidia-container-toolkit.enable = true;
   #virtualisation.containerd.enable = true;
 
+  # FHS-shaped wrapper around /run/opengl-driver/lib so the k8s-device-plugin
+  # and gpu-feature-discovery DaemonSets can find libnvidia-ml.so.1 from inside
+  # their pods. The plugin's NVML probe (go-nvlib) walks fixed paths under
+  # `--container-driver-root` (default /driver-root) — /usr/lib64,
+  # /usr/lib/x86_64-linux-gnu, ... — none of which exist in NixOS's driver
+  # layout (libs live in /run/opengl-driver/lib). Pointing the chart's
+  # nvidiaDriverRoot at this wrapper makes the host path mount as /driver-root
+  # in the pod, with libnvidia-ml.so.1 visible at /driver-root/usr/lib64/...
+  # so the FHS walk succeeds. The symlink resolves to /nix/store/...; CDI
+  # injection (cdi.k8s.io/gpu annotation + containerd ≥2.0's default CDI
+  # support) mounts that same store path into the pod and runs the
+  # update-ldcache hook, so dlopen of the resolved path actually works.
+  systemd.tmpfiles.rules = [
+    "d /var/lib/nvidia-driver-root           0755 root root - -"
+    "d /var/lib/nvidia-driver-root/usr       0755 root root - -"
+    "d /var/lib/nvidia-driver-root/usr/lib64 0755 root root - -"
+  ];
+  fileSystems."/var/lib/nvidia-driver-root/usr/lib64" = {
+    device = "/run/opengl-driver/lib";
+    fsType = "none";
+    options = ["bind" "ro"];
+  };
+
   services.k3s = {
     enable = true;
     role = "agent";
