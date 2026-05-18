@@ -74,6 +74,30 @@ in {
     log-level = "info"
   '';
 
+  # FHS-shaped wrapper around the leaf nvidia-x11 lib dir. Needed not for the
+  # NVML probe (CDI's update-ldcache hook handles that via dlopen + ld.so.cache),
+  # but for the k8s-device-plugin's CDI *spec generation* at startup. The plugin
+  # builds a CDI spec describing the GPU resources it manages, and its file
+  # discoverer searches FHS paths under `--container-driver-root` (default
+  # /driver-root) for libcuda.so/libnvidia-ml.so/etc. — those files have to
+  # exist as resolvable paths, not just as ldcache entries.
+  #
+  # Bind source is the leaf nvidia-x11 store path (not /run/opengl-driver/lib,
+  # which is an aggregate of absolute symlinks into /nix/store that aren't
+  # visible inside the pod). The leaf uses relative symlinks within itself
+  # (libnvidia-ml.so -> libnvidia-ml.so.1 -> libnvidia-ml.so.595.58.03), so
+  # the discoverer's path lookups resolve cleanly inside the bind.
+  systemd.tmpfiles.rules = [
+    "d /var/lib/nvidia-driver-root           0755 root root - -"
+    "d /var/lib/nvidia-driver-root/usr       0755 root root - -"
+    "d /var/lib/nvidia-driver-root/usr/lib64 0755 root root - -"
+  ];
+  fileSystems."/var/lib/nvidia-driver-root/usr/lib64" = {
+    device = "${config.hardware.nvidia.package}/lib";
+    fsType = "none";
+    options = ["bind" "ro"];
+  };
+
   services.k3s = {
     enable = true;
     role = "agent";
