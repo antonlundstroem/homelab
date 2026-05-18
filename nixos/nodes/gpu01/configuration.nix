@@ -34,25 +34,32 @@ in {
   hardware.nvidia-container-toolkit.enable = true;
   #virtualisation.containerd.enable = true;
 
-  # FHS-shaped wrapper around /run/opengl-driver/lib so the k8s-device-plugin
-  # and gpu-feature-discovery DaemonSets can find libnvidia-ml.so.1 from inside
-  # their pods. The plugin's NVML probe (go-nvlib) walks fixed paths under
-  # `--container-driver-root` (default /driver-root) — /usr/lib64,
-  # /usr/lib/x86_64-linux-gnu, ... — none of which exist in NixOS's driver
-  # layout (libs live in /run/opengl-driver/lib). Pointing the chart's
-  # nvidiaDriverRoot at this wrapper makes the host path mount as /driver-root
-  # in the pod, with libnvidia-ml.so.1 visible at /driver-root/usr/lib64/...
-  # so the FHS walk succeeds. The symlink resolves to /nix/store/...; CDI
-  # injection (cdi.k8s.io/gpu annotation + containerd ≥2.0's default CDI
-  # support) mounts that same store path into the pod and runs the
-  # update-ldcache hook, so dlopen of the resolved path actually works.
+  # FHS-shaped wrapper so the k8s-device-plugin and gpu-feature-discovery
+  # DaemonSets can find libnvidia-ml.so.1 from inside their pods. The plugin's
+  # NVML probe (go-nvlib) walks fixed paths under `--container-driver-root`
+  # (default /driver-root) — /usr/lib64, /usr/lib/x86_64-linux-gnu, ... — none
+  # of which exist in NixOS's driver layout. Pointing the chart's nvidiaDriverRoot
+  # at this wrapper makes the host path mount as /driver-root in the pod, with
+  # libnvidia-ml.so.1 visible at /driver-root/usr/lib64/...
+  #
+  # The bind source MUST be the leaf nvidia-x11 store path, NOT /run/opengl-driver/lib
+  # (which is an aggregate whose symlinks point to absolute /nix/store/... paths
+  # that aren't visible inside the pod). The leaf nvidia-x11/lib uses relative
+  # symlinks (libnvidia-ml.so -> libnvidia-ml.so.1 -> libnvidia-ml.so.595.58.03)
+  # that resolve within the bind itself, so the probe's filepath.EvalSymlinks
+  # succeeds without needing /nix/store mounted.
+  #
+  # The plugin pod doesn't need /dev/nvidia* at runtime under
+  # deviceListStrategy=cdi-annotations: after the probe passes, it reads
+  # /var/run/cdi/*.json (mounted) to enumerate devices for kubelet, instead of
+  # calling NVML.Init.
   systemd.tmpfiles.rules = [
     "d /var/lib/nvidia-driver-root           0755 root root - -"
     "d /var/lib/nvidia-driver-root/usr       0755 root root - -"
     "d /var/lib/nvidia-driver-root/usr/lib64 0755 root root - -"
   ];
   fileSystems."/var/lib/nvidia-driver-root/usr/lib64" = {
-    device = "/run/opengl-driver/lib";
+    device = "${config.hardware.nvidia.package}/lib";
     fsType = "none";
     options = ["bind" "ro"];
   };
