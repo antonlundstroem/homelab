@@ -41,7 +41,7 @@ in {
     tokenFile = config.sops.secrets.k3s-token.path;
 
     extraFlags = [
-      "--node-label=node-role.kubernetes.io/gpu=true"
+      #"--node-label=node-role.kubernetes.io/gpu=true"
       "--node-label=nvidia.com/gpu=true"
       "--node-taint=nvidia.com/gpu=true:NoSchedule"
     ];
