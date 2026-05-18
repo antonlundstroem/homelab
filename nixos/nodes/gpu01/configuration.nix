@@ -73,7 +73,13 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  environment.systemPackages = with pkgs; [vim git curl nvidia-container-toolkit];
+  environment.systemPackages = with pkgs; [
+    vim
+    git
+    curl
+    nvidia-container-toolkit
+    nvidia-container-toolkit.tools
+  ];
 
   system.stateVersion = "25.11";
   nix.settings = {
