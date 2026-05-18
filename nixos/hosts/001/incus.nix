@@ -43,7 +43,7 @@
           root = {
             path = "/";
             pool = "default";
-            size = "50GiB";
+            size = "100GiB";
             type = "disk";
           };
         };

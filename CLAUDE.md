@@ -124,7 +124,7 @@ Today disk-hungry services on host001 live directly on `rpool/root`, sharing the
 Services that need this:
 
 - **Garage** — `/var/lib/garage/{meta,data}` → `rpool/garage`, e.g. `quota = "50G"`, then bump `capacity` in `nixos/hosts/001/garage.nix` to match. Garage's `capacity` in the layout is a soft self-limit only.
-- **Incus** — `/var/lib/incus/storage-pools/default` → `rpool/incus` (or switch the storage pool to the `zfs` driver pointing at the dataset, which also makes the per-instance `size` in the default profile an enforced ZFS quota instead of an unenforced hint under the `dir` driver). See `nixos/hosts/001/incus.nix`.
+- **Incus** — already on its own `rpool/incus` dataset (`disko.nix`) with the storage pool using the `zfs` driver (`incus.nix`), so per-VM `size` in the `default` profile is an enforced ZFS quota. What's still missing: a quota on `rpool/incus` itself to cap how much disk *all* VMs collectively can consume — add `options.quota = "..."` to the `incus` dataset in `disko.nix`.
 
 Worth doing before adding more disk-hungry services to host001 (VMs, container image cache, future binary-cache growth) so they can't accidentally crowd each other out. Note: changing disko on a live system isn't a `nixos-rebuild` away — it requires creating the dataset by hand with `zfs create` first, then moving the existing data into it, then matching the disko config so a fresh install recreates the same layout.
 
