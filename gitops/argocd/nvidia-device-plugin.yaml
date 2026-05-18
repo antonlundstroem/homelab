@@ -17,6 +17,18 @@ spec:
             value: "true"
             effect: NoSchedule
 
+        # Route plugin + gfd pods through nvidia-container-runtime, which
+        # applies the CDI spec on container start: mounts /dev/nvidia*,
+        # bind-mounts the /nix/store driver libs, runs the update-ldcache
+        # hook. Required because kubelet ≥1.28 no longer propagates pod
+        # annotations to container CRI annotations, so containerd's native
+        # CDI annotation path can't inject these system pods. RuntimeClass
+        # is registered by k3s when nvidia-container-runtime appears on its
+        # service PATH (see nixos/nodes/gpu01/configuration.nix). Workload
+        # pods still get GPUs via the device-plugin API + CDI list strategy
+        # below; the runtime class is only needed for the bootstrap pods.
+        runtimeClassName: nvidia
+
         # CDI list strategy: at runtime the plugin returns CDI device names
         # (nvidia.com/gpu=0, ...) from /var/run/cdi/*.json to kubelet, which
         # containerd (≥2.0, enable_cdi defaults true) then resolves into
