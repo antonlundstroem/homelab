@@ -6,6 +6,32 @@
   lan = import ../../settings/networking/configuration.nix;
   inherit (lan.services.k3s) ip mac;
   inherit (lan) gateway;
+
+  # FHS-compatible copy of the nvidia userspace binaries (nvidia-smi etc.).
+  # NixOS-built ELFs have an absolute PT_INTERP into /nix/store/...glibc.../
+  # and absolute DT_RPATH entries — neither resolves inside a workload pod's
+  # rootfs (Ubuntu/Debian/etc.) since /nix/store isn't mounted. patchelf
+  # rewrites the interpreter to /lib64/ld-linux-x86-64.so.2 (standard FHS,
+  # present on Ubuntu/Debian/CentOS/Alpine-glibc) and drops the RPATH so the
+  # dynamic linker resolves libc/libpthread/libm via the container's own
+  # ld.so.cache. The nvidia libs the binaries dlopen (libnvidia-ml.so.1 etc.)
+  # are mounted at /usr/lib64/ by the device-plugin's CDI spec and reachable
+  # via the same cache.
+  nvidiaBinFhs = pkgs.runCommand "nvidia-x11-bin-fhs" {
+    nativeBuildInputs = [pkgs.patchelf];
+  } ''
+    mkdir -p $out/bin
+    for src in ${config.hardware.nvidia.package.bin}/bin/*; do
+      name=$(basename "$src")
+      cp "$src" "$out/bin/$name"
+      chmod +w "$out/bin/$name"
+      # Only patch ELF binaries; skip shell scripts (nvidia-bug-report.sh).
+      if patchelf --print-interpreter "$out/bin/$name" >/dev/null 2>&1; then
+        patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$out/bin/$name"
+        patchelf --remove-rpath "$out/bin/$name"
+      fi
+    done
+  '';
 in {
   imports = [
     ./hardware-configuration.nix
@@ -91,9 +117,22 @@ in {
     "d /var/lib/nvidia-driver-root           0755 root root - -"
     "d /var/lib/nvidia-driver-root/usr       0755 root root - -"
     "d /var/lib/nvidia-driver-root/usr/lib64 0755 root root - -"
+    "d /var/lib/nvidia-driver-root/usr/bin   0755 root root - -"
   ];
   fileSystems."/var/lib/nvidia-driver-root/usr/lib64" = {
     device = "${config.hardware.nvidia.package}/lib";
+    fsType = "none";
+    options = ["bind" "ro"];
+  };
+  # Same wrapper trick for the bin dir so the plugin's executable discoverer
+  # (pkg/lookup/executable.go, searches <driver-root>/{usr/bin,usr/sbin,...})
+  # finds nvidia-smi / nvidia-debugdump / nvidia-cuda-mps-* and writes them
+  # as mounts into the CDI spec. Workload pods then see /usr/bin/nvidia-smi.
+  # We mount the patchelf'd FHS-compatible copy (see top of file), NOT the
+  # raw nvidia-x11.bin output, so the binaries actually exec in non-NixOS
+  # workload pods (their PT_INTERP would otherwise be /nix/store/.../ld-linux).
+  fileSystems."/var/lib/nvidia-driver-root/usr/bin" = {
+    device = "${nvidiaBinFhs}/bin";
     fsType = "none";
     options = ["bind" "ro"];
   };
