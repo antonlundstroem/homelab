@@ -52,10 +52,10 @@ in {
     containerdConfigTemplate = ''
       {{ template "base" . }}
 
-      [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
         runtime_type = "io.containerd.runc.v2"
 
-      [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia.options]
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
         BinaryName = "${pkgs.nvidia-container-toolkit.tools}/bin/nvidia-container-runtime"
         SystemdCgroup = true
     '';
