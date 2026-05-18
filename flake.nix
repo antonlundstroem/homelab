@@ -38,8 +38,7 @@
       ];
 
       gpu01 = mkSystem [
-        #disko.nixosModules.disko
-        #sops-nix.nixosModules.sops
+        sops-nix.nixosModules.sops
         ./nixos/nodes/gpu01/configuration.nix
       ];
 

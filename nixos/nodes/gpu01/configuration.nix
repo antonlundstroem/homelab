@@ -1,20 +1,43 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  config,
+  ...
+}: let
+  lan = import ../../settings/networking/configuration.nix;
+  inherit (lan.services.k3s) ip mac;
+  inherit (lan) gateway;
+in {
   imports = [
     ./hardware-configuration.nix
     ./networking.nix
   ];
 
-  #sops = {
-  #  defaultSopsFile = ../../../secrets/hosts/001/garage.yaml;
-  #  # age key auto-derived from /etc/ssh/ssh_host_ed25519_key — nothing to set.
-  #  # services.garage uses DynamicUser=true, so there's no persistent `garage`
-  #  # account to chown to. Leave the secret as root:root 0400 — systemd reads
-  #  # EnvironmentFile as root before dropping privileges to the dynamic user.
-  #  secrets.garage_env = {
-  #    key = "garage_env";
-  #    mode = "0400";
-  #  };
+  sops = {
+    defaultSopsFile = ../../../secrets/nodes/gpu01/secrets.yaml;
+    secrets.k3s-token = {
+      path = "/etc/k3s/token";
+      mode = "0600";
+      owner = "root";
+    };
+  };
+
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  #services.xserver.videoDrivers = ["nvidia"];
+  #hardware.nvidia = {
+  #  modesetting.enable = true;
+  #  open = false; # use proprietary driver
+  #  package = config.boot.kernelPackages.nvidiaPackages.stable;
   #};
+  #hardware.nvidia-container-toolkit.enable = true;
+  #virtualisation.containerd.enable = true;
+
+  services.k3s = {
+    enable = true;
+    role = "agent";
+    serverAddr = "https://${ip}:6443";
+    tokenFile = config.sops.secrets.k3s-token.path;
+  };
 
   # ZFS Support
   #boot.supportedFilesystems = ["zfs"];
@@ -41,7 +64,6 @@
   };
 
   security.sudo.wheelNeedsPassword = false;
-  # users.users.root.initialHashedPassword = "$6$..."; # mkpasswd -m sha-512
 
   environment.systemPackages = with pkgs; [vim git curl];
 
