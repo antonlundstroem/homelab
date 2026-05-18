@@ -45,6 +45,29 @@ When to actually re-run Terraform: first-time provisioning, you changed somethin
 
 The k3s VM bootstraps itself into a working GitOps state with no manual `kubectl` step. `nixos/services/k3s/configuration.nix` writes three resources into the k3s auto-deploy directory via `services.k3s.manifests`: an `ingress-nginx` `HelmChart`, an `argo-cd` `HelmChart` (with a Tailscale Ingress exposed at `argocd.<tailnet>.ts.net`), and a single root `Application` pointing at `gitops/argocd/` in this repo. From there ArgoCD takes over: every YAML in `gitops/argocd/` is a child `Application` describing one workload, and each one references its actual manifests under `gitops/manifests/<name>/`. To add a new service: drop manifests into `gitops/manifests/<name>/`, add `gitops/argocd/<name>.yaml` pointing at it, commit — no rebuild required.
 
+### Scheduling on the GPU node
+
+`gpu01` is a NixOS k3s agent with an NVIDIA GPU (see `nixos/nodes/gpu01/`). It's tainted `nvidia.com/gpu=true:NoSchedule` so unrelated workloads can't land there. To schedule a pod on it, both fields are required:
+
+```yaml
+spec:
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+  containers:
+    - name: ...
+      image: ...
+      resources:
+        limits:
+          nvidia.com/gpu: 1   # or however many
+```
+
+The taint blocks accidental scheduling; the resource limit triggers GPU injection via the device plugin + CDI. No `runtimeClassName` is needed on workload pods — that's only on the bootstrap pods (`nvidia-device-plugin`, `gpu-feature-discovery`) so they can call NVML during startup. Compute and `nvidia-smi` both work in workload pods (the host's nvidia binaries are patchelf'd to use FHS interpreter paths — see `nixos/nodes/gpu01/configuration.nix`).
+
+Caveat: the taint only blocks pods that lack the toleration; it does *not* enforce that pods with the toleration must request GPU. Be intentional — only add the toleration to pods that actually need GPU. (If you ever want hard enforcement, layer in a Kyverno/Gatekeeper policy.)
+
 ### Workload image strategy
 
 Workloads currently run as **vanilla container images** (whatever ArgoCD pulls from upstream registries via the manifests under `gitops/`). When image bloat actually starts to hurt, there's a spectrum of progressively smaller options that lean on the k3s node's Nix store:
