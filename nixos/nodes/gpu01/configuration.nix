@@ -41,8 +41,8 @@ in {
     tokenFile = config.sops.secrets.k3s-token.path;
 
     extraFlags = [
-      #"--node-label=node-role.kubernetes.io/gpu=true"
-      "--node-label=nvidia.com/gpu=true"
+      # NFD/GFD apply the canonical nvidia.com/gpu.* labels; the taint stays
+      # so non-GPU workloads can't land here.
       "--node-taint=nvidia.com/gpu=true:NoSchedule"
     ];
 
