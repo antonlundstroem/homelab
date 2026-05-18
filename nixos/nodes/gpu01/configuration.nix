@@ -34,6 +34,18 @@ in {
   hardware.nvidia-container-toolkit.enable = true;
   #virtualisation.containerd.enable = true;
 
+  # Put nvidia-container-runtime on k3s's service PATH so k3s's startup
+  # `findNvidiaContainerRuntimes` (exec.LookPath) discovers it and registers
+  # the `nvidia` runtime in the auto-generated containerd config. Pods setting
+  # runtimeClassName: nvidia then route through nvidia-container-runtime, which
+  # applies the CDI spec at /var/run/cdi/nvidia-container-toolkit.json — mounting
+  # /dev/nvidia* and the /nix/store driver libs into the pod. Required for the
+  # k8s-device-plugin / gpu-feature-discovery bootstrap pods to call NVML.Init
+  # (kubelet doesn't propagate the cdi.k8s.io/* pod annotations to container CRI
+  # annotations on k8s ≥1.28, so the runtime-class hook is how we get CDI
+  # injection onto these pods).
+  systemd.services.k3s.path = [config.hardware.nvidia-container-toolkit.package.tools];
+
   # FHS-shaped wrapper so the k8s-device-plugin and gpu-feature-discovery
   # DaemonSets can find libnvidia-ml.so.1 from inside their pods. The plugin's
   # NVML probe (go-nvlib) walks fixed paths under `--container-driver-root`
