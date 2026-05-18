@@ -38,7 +38,7 @@ spec:
         # plugin API. This is the modern post-1.28 CDI flow.
         deviceListStrategy: cdi-annotations
 
-        # Point at the FHS-shaped wrapper on the host (see
+        # nvidiaDriverRoot: FHS-shaped wrapper on the host (see
         # nixos/nodes/gpu01/configuration.nix). The chart mounts this as
         # /driver-root in the pod so the plugin's CDI spec generator can
         # locate libcuda.so / libnvidia-ml.so / ... by path under
@@ -46,6 +46,14 @@ spec:
         # work via ld.so.cache from CDI's update-ldcache hook regardless;
         # the wrapper is specifically for the discoverer's path resolution.)
         nvidiaDriverRoot: /var/lib/nvidia-driver-root
+
+        # nvidiaDevRoot must be set separately to the host root, otherwise
+        # it inherits from nvidiaDriverRoot and the plugin writes device
+        # paths like /var/lib/nvidia-driver-root/dev/nvidia0 into the CDI
+        # spec it generates for workload pods — those host paths don't
+        # exist and containerd fails workload pods with "failed to stat
+        # CDI host device". The real device nodes live at /dev/nvidia*.
+        nvidiaDevRoot: /
 
         # Node Feature Discovery — labels nodes by hardware (PCI/CPU).
         nfd:
