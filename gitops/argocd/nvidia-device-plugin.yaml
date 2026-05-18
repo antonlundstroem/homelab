@@ -17,24 +17,28 @@ spec:
             value: "true"
             effect: NoSchedule
 
-        # CDI mode: device plugin advertises GPUs as CDI references; containerd
-        # (≥2.0, CDI on by default) reads /var/run/cdi/nvidia-container-toolkit.json
-        # and injects devices + driver libs into workload pods.
+        # CDI list strategy: at runtime the plugin returns CDI device names
+        # (nvidia.com/gpu=0, ...) from /var/run/cdi/*.json to kubelet, which
+        # containerd (≥2.0, enable_cdi defaults true) then resolves into
+        # device/mount/hook edits applied to *workload* pods via the device
+        # plugin API. This is the modern post-1.28 CDI flow.
         deviceListStrategy: cdi-annotations
 
         # Point at the FHS-shaped wrapper provisioned on the host (see
-        # nixos/nodes/gpu01/configuration.nix), NOT at /run/opengl-driver
-        # directly. The chart bind-mounts this path as /driver-root in the
-        # pod; the plugin's NVML probe walks /driver-root/usr/lib64/... for
-        # libnvidia-ml.so.1, which only resolves because the wrapper exposes
-        # /run/opengl-driver/lib at .../usr/lib64.
+        # nixos/nodes/gpu01/configuration.nix, which bind-mounts the leaf
+        # nvidia-x11 lib dir as .../usr/lib64). Required so the plugin's
+        # own NVML probe (go-nvlib path walk) succeeds at startup —
+        # validation gate for `deviceListStrategy=cdi-annotations`. The
+        # actual runtime path doesn't call NVML.Init under CDI list mode,
+        # so the bootstrap pod doesn't need /dev/nvidia* device nodes.
         nvidiaDriverRoot: /var/lib/nvidia-driver-root
 
-        # The plugin pod itself still has to enumerate GPUs via NVML, which
-        # needs /dev/nvidiactl + the driver libs to actually dlopen. The CDI
-        # annotation tells containerd to apply the CDI spec on pod start,
-        # which mounts the /nix/store driver path and runs update-ldcache so
-        # the symlinks under /driver-root resolve at load time.
+        # podAnnotations CDI flow (cdi.k8s.io/<key>: <vendor>/<class>=<dev>)
+        # is dead weight on k8s ≥1.28 — kubelet no longer propagates pod
+        # annotations to CRI container annotations, so containerd's CDI
+        # processing never sees them. Left here as documentation of intent
+        # in case kubelet behavior changes back upstream; the wrapper above
+        # is what actually unblocks the probe today.
         podAnnotations:
           cdi.k8s.io/gpu: "nvidia.com/gpu=all"
 
@@ -46,8 +50,13 @@ spec:
               - operator: Exists
 
         # GPU Feature Discovery — adds nvidia.com/gpu.{product,memory,...}
-        # labels. Same bootstrap story as the plugin: FHS wrapper for the
-        # NVML probe + CDI annotation so dlopen actually resolves.
+        # labels. FHS wrapper unblocks the strategy=auto probe (otherwise
+        # bails with "unsupported strategy auto"). UNRESOLVED: gfd actually
+        # calls NVML.Init to query device props at runtime, which needs
+        # /dev/nvidiactl. The chart doesn't mount it into the gfd pod, so
+        # expect a runtime failure here even with the wrapper in place; if
+        # so, treat gfd separately (custom DaemonSet or skip gfd labels for
+        # now — NFD still labels the node).
         gfd:
           enabled: true
           nvidiaDriverRoot: /var/lib/nvidia-driver-root
