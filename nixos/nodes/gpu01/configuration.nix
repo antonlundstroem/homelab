@@ -32,7 +32,7 @@ in {
     package = config.boot.kernelPackages.nvidiaPackages.stable;
   };
   hardware.nvidia-container-toolkit.enable = true;
-  virtualisation.containerd.enable = true;
+  #virtualisation.containerd.enable = true;
 
   services.k3s = {
     enable = true;
@@ -73,7 +73,7 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  environment.systemPackages = with pkgs; [vim git curl];
+  environment.systemPackages = with pkgs; [vim git curl nvidia-container-toolkit];
 
   system.stateVersion = "25.11";
   nix.settings = {
