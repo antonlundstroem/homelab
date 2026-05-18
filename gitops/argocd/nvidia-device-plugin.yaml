@@ -22,11 +22,13 @@ spec:
         # bind-mounts the /nix/store driver libs, runs the update-ldcache
         # hook. Required because kubelet ≥1.28 no longer propagates pod
         # annotations to container CRI annotations, so containerd's native
-        # CDI annotation path can't inject these system pods. RuntimeClass
-        # is registered by k3s when nvidia-container-runtime appears on its
-        # service PATH (see nixos/nodes/gpu01/configuration.nix). Workload
-        # pods still get GPUs via the device-plugin API + CDI list strategy
-        # below; the runtime class is only needed for the bootstrap pods.
+        # CDI annotation injection can't reach these system pods. The
+        # `nvidia` RuntimeClass is registered by k3s once nvidia-container-runtime
+        # is on its service PATH and the runtime is forced into CDI mode
+        # via /etc/nvidia-container-runtime/config.toml (see
+        # nixos/nodes/gpu01/configuration.nix). Workload pods still get
+        # GPUs via the device-plugin API + CDI list strategy below; the
+        # runtime class is only needed for the bootstrap pods.
         runtimeClassName: nvidia
 
         # CDI list strategy: at runtime the plugin returns CDI device names
@@ -34,25 +36,14 @@ spec:
         # containerd (≥2.0, enable_cdi defaults true) then resolves into
         # device/mount/hook edits applied to *workload* pods via the device
         # plugin API. This is the modern post-1.28 CDI flow.
+        #
+        # nvidiaDriverRoot is intentionally unset so the chart skips mounting
+        # the host driver root at /driver-root. The plugin's NVML probe walks
+        # /driver-root/usr/lib64/... and silently fails (no such directory),
+        # falls back to bare `dlopen("libnvidia-ml.so.1")` which resolves via
+        # the ld.so.cache the CDI `update-ldcache` hook populates at container
+        # start from the /nix/store driver path.
         deviceListStrategy: cdi-annotations
-
-        # Point at the FHS-shaped wrapper provisioned on the host (see
-        # nixos/nodes/gpu01/configuration.nix, which bind-mounts the leaf
-        # nvidia-x11 lib dir as .../usr/lib64). Required so the plugin's
-        # own NVML probe (go-nvlib path walk) succeeds at startup —
-        # validation gate for `deviceListStrategy=cdi-annotations`. The
-        # actual runtime path doesn't call NVML.Init under CDI list mode,
-        # so the bootstrap pod doesn't need /dev/nvidia* device nodes.
-        nvidiaDriverRoot: /var/lib/nvidia-driver-root
-
-        # podAnnotations CDI flow (cdi.k8s.io/<key>: <vendor>/<class>=<dev>)
-        # is dead weight on k8s ≥1.28 — kubelet no longer propagates pod
-        # annotations to CRI container annotations, so containerd's CDI
-        # processing never sees them. Left here as documentation of intent
-        # in case kubelet behavior changes back upstream; the wrapper above
-        # is what actually unblocks the probe today.
-        podAnnotations:
-          cdi.k8s.io/gpu: "nvidia.com/gpu=all"
 
         # Node Feature Discovery — labels nodes by hardware (PCI/CPU).
         nfd:
@@ -62,18 +53,11 @@ spec:
               - operator: Exists
 
         # GPU Feature Discovery — adds nvidia.com/gpu.{product,memory,...}
-        # labels. FHS wrapper unblocks the strategy=auto probe (otherwise
-        # bails with "unsupported strategy auto"). UNRESOLVED: gfd actually
-        # calls NVML.Init to query device props at runtime, which needs
-        # /dev/nvidiactl. The chart doesn't mount it into the gfd pod, so
-        # expect a runtime failure here even with the wrapper in place; if
-        # so, treat gfd separately (custom DaemonSet or skip gfd labels for
-        # now — NFD still labels the node).
+        # labels. Same bootstrap mechanism as the plugin pod: CDI injection
+        # via runtimeClassName: nvidia provides /dev/nvidia* and the driver
+        # libs, so NVML.Init succeeds.
         gfd:
           enabled: true
-          nvidiaDriverRoot: /var/lib/nvidia-driver-root
-          podAnnotations:
-            cdi.k8s.io/gpu: "nvidia.com/gpu=all"
           tolerations:
             - key: nvidia.com/gpu
               operator: Equal
