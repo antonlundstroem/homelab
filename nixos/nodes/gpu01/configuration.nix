@@ -23,7 +23,7 @@ in {
     };
   };
 
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  #boot.kernelPackages = pkgs.linuxPackages_latest;
 
   services.xserver.videoDrivers = ["nvidia"];
   hardware.nvidia = {
