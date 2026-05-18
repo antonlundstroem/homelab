@@ -36,14 +36,16 @@ spec:
         # containerd (≥2.0, enable_cdi defaults true) then resolves into
         # device/mount/hook edits applied to *workload* pods via the device
         # plugin API. This is the modern post-1.28 CDI flow.
-        #
-        # nvidiaDriverRoot is intentionally unset so the chart skips mounting
-        # the host driver root at /driver-root. The plugin's NVML probe walks
-        # /driver-root/usr/lib64/... and silently fails (no such directory),
-        # falls back to bare `dlopen("libnvidia-ml.so.1")` which resolves via
-        # the ld.so.cache the CDI `update-ldcache` hook populates at container
-        # start from the /nix/store driver path.
         deviceListStrategy: cdi-annotations
+
+        # Point at the FHS-shaped wrapper on the host (see
+        # nixos/nodes/gpu01/configuration.nix). The chart mounts this as
+        # /driver-root in the pod so the plugin's CDI spec generator can
+        # locate libcuda.so / libnvidia-ml.so / ... by path under
+        # /driver-root/usr/lib64/ at startup. (NVML probe + runtime calls
+        # work via ld.so.cache from CDI's update-ldcache hook regardless;
+        # the wrapper is specifically for the discoverer's path resolution.)
+        nvidiaDriverRoot: /var/lib/nvidia-driver-root
 
         # Node Feature Discovery — labels nodes by hardware (PCI/CPU).
         nfd:
@@ -53,11 +55,12 @@ spec:
               - operator: Exists
 
         # GPU Feature Discovery — adds nvidia.com/gpu.{product,memory,...}
-        # labels. Same bootstrap mechanism as the plugin pod: CDI injection
-        # via runtimeClassName: nvidia provides /dev/nvidia* and the driver
-        # libs, so NVML.Init succeeds.
+        # labels. Doesn't generate CDI specs (just queries NVML), so it
+        # tolerates the wrapper being absent — but we keep nvidiaDriverRoot
+        # set here too for symmetry with the plugin's bootstrap.
         gfd:
           enabled: true
+          nvidiaDriverRoot: /var/lib/nvidia-driver-root
           tolerations:
             - key: nvidia.com/gpu
               operator: Equal
