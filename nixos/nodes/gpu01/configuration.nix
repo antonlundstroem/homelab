@@ -137,7 +137,18 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  environment.systemPackages = with pkgs; [vim git curl];
+  environment.systemPackages = with pkgs; [
+    vim
+    git
+    curl
+    # nvidia-ctk on the system PATH so /run/current-system/sw/bin/nvidia-ctk
+    # resolves. The k8s-device-plugin embeds this path into the CDI spec it
+    # generates for workload pods (cdi.nvidiaHookPath in the chart values);
+    # the runtime exec's the hook on the host at container start to create
+    # symlinks, update ldcache, and enable cuda-compat. NixOS doesn't
+    # populate /usr/bin, so the chart's default /usr/bin/nvidia-ctk fails.
+    config.hardware.nvidia-container-toolkit.package
+  ];
 
   system.stateVersion = "25.11";
   nix.settings = {
