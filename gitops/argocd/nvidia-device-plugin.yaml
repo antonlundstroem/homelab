@@ -20,11 +20,13 @@ spec:
         # CDI mode: device plugin advertises GPUs as CDI references; containerd
         # reads /var/run/cdi/nvidia-container-toolkit.json and injects devices.
         deviceListStrategy: cdi-annotations
-        # Discover GPUs by parsing the CDI spec itself, not by calling NVML
-        # inside the plugin pod. This sidesteps needing libnvidia-ml.so +
-        # /dev/nvidiactl access in the plugin's own container.
-        deviceDiscoveryStrategy: cdi
         nvidiaDriverRoot: /run/opengl-driver
+
+        # The plugin pod itself still has to enumerate GPUs via NVML, which
+        # needs /dev/nvidiactl. Annotate the pod so containerd injects it from
+        # the CDI spec on pod start (rather than hostPath mounting /dev).
+        podAnnotations:
+          cdi.k8s.io/gpu: "nvidia.com/gpu=all"
 
         # Node Feature Discovery — labels nodes by hardware (PCI/CPU).
         nfd:
