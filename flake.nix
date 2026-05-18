@@ -31,16 +31,16 @@
       };
   in {
     nixosConfigurations = {
-      #nixos = mkSystem [
-      #  disko.nixosModules.disko
-      #  ./nixos/disko.nix
-      #  ./nixos/host.nix
-      #];
-
       host001 = mkSystem [
         disko.nixosModules.disko
         sops-nix.nixosModules.sops
         ./nixos/hosts/001/configuration.nix
+      ];
+
+      gpu01 = mkSystem [
+        #disko.nixosModules.disko
+        #sops-nix.nixosModules.sops
+        ./nixos/nodes/gpu01/configuration.nix
       ];
 
       k3s = mkSystem [
