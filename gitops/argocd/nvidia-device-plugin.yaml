@@ -16,20 +16,26 @@ spec:
             operator: Equal
             value: "true"
             effect: NoSchedule
-        nodeSelector:
-          nvidia.com/gpu: "true"
-        # Override the chart's default NFD/GFD-based affinity — we don't run
-        # Node Feature Discovery, so the default selectors filter everything
-        # out. Match our manually-applied label instead.
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: nvidia.com/gpu
-                      operator: In
-                      values:
-                        - "true"
+
+        # Node Feature Discovery — detects PCI/CPU features on every node and
+        # writes feature.node.kubernetes.io/* labels (incl. pci-10de.present
+        # for NVIDIA hardware).
+        nfd:
+          enabled: true
+          worker:
+            tolerations:
+              - operator: Exists
+
+        # GPU Feature Discovery — runs only on nodes NFD flagged as having
+        # NVIDIA hardware, adds nvidia.com/gpu.{product,memory,present,...}.
+        # The device plugin's default affinity keys off these.
+        gfd:
+          enabled: true
+          tolerations:
+            - key: nvidia.com/gpu
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
