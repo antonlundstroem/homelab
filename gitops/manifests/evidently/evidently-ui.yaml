@@ -23,7 +23,7 @@ spec:
               pip install --quiet evidently && \
               exec evidently ui \
                 --host 0.0.0.0 \
-                --workspace s3://evidently/
+                --workspace s3://evidently/workspace
           envFrom:
             - secretRef:
                 name: rustfs-secrets
