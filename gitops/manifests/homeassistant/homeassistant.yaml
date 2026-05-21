@@ -9,6 +9,26 @@ spec:
     requests:
       storage: 10Gi
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homeassistant-config
+data:
+  configuration.yaml: |
+    default_config:
+
+    frontend:
+      themes: !include_dir_merge_named themes
+
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+        - 10.42.0.0/16
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,6 +56,9 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: config-overlay
+              mountPath: /config/configuration.yaml
+              subPath: configuration.yaml
           resources:
             requests:
               cpu: 200m
@@ -46,6 +69,9 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: homeassistant
+        - name: config-overlay
+          configMap:
+            name: homeassistant-config
 ---
 apiVersion: v1
 kind: Service
