@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: evidently
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/antonlundstroem/homelab.git
+    path: gitops/manifests/evidently
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: evidently
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

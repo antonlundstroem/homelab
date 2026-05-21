@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evidently-ui
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: evidently-ui
+  template:
+    metadata:
+      labels:
+        app: evidently-ui
+    spec:
+      containers:
+        - name: evidently-ui
+          image: python:3.11-slim-bookworm
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install --quiet evidently && \
+              exec evidently ui \
+                --host 0.0.0.0 \
+                --workspace s3://evidently/workspace
+          envFrom:
+            - secretRef:
+                name: rustfs-secrets
+          env:
+            - name: FSSPEC_S3_ENDPOINT_URL
+              value: http://rustfs-svc.rustfs.svc.cluster.local:9000
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: evidently-ui
+spec:
+  selector:
+    app: evidently-ui
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: evidently-ui
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: evidently
+      port:
+        number: 8000
+  tls:
+    - hosts:
+        - evidently-ui
