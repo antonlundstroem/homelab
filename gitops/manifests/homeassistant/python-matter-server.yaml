@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matter-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: matter-server
+  template:
+    metadata:
+      labels:
+        app: matter-server
+    spec:
+      containers:
+        - name: matter-server
+          image: ghcr.io/matter-js/python-matter-server:stable
+          ports:
+            - containerPort: 8124
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: matter-server
+spec:
+  selector:
+    app: matter-server
+  ports:
+    - port: 8124
+      targetPort: 8124
+#---
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: matter-server
+#spec:
+#  ingressClassName: tailscale
+#  defaultBackend:
+#    service:
+#      name: matter-server
+#      port:
+#        number: 8124
+#  tls:
+#    - hosts:
+#        - home
