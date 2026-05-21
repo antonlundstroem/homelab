@@ -92,7 +92,7 @@ spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: homeassistant
+      name: home
       port:
         number: 8123
   tls:
