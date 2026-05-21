@@ -76,7 +76,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: homeassistant
+  name: home
 spec:
   selector:
     app: homeassistant
@@ -92,7 +92,7 @@ spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: homeassistant
+      name: home
       port:
         number: 8123
   tls:
