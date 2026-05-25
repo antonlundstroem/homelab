@@ -30,6 +30,13 @@ spec:
       containers:
         - name: matter-server
           image: ghcr.io/matter-js/python-matter-server:stable
+          args:
+            - --storage-path
+            - /data
+            - --paa-root-cert-dir
+            - /data/credentials
+            - --primary-interface
+            - lan0
           ports:
             - containerPort: 5580
           securityContext:
