@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: otbr
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otbr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: otbr
+  template:
+    metadata:
+      labels:
+        app: otbr
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k3s
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: otbr
+          image: openthread/border-router:latest
+          securityContext:
+            capabilities:
+              add: [NET_ADMIN]
+          env:
+            - name: OT_RCP_DEVICE
+              value: "spinel+hdlc+tcp://192.168.1.219:6638"
+            - name: OT_INFRA_IF
+              value: "lan0"
+            - name: OT_THREAD_IF
+              value: "wpan0"
+            - name: OT_REST_LISTEN_ADDR
+              value: "0.0.0.0"
+            - name: OT_REST_LISTEN_PORT
+              value: "8080"
+            - name: OT_LOG_LEVEL
+              value: "7"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tun
+              mountPath: /dev/net/tun
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: otbr
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otbr
+spec:
+  selector:
+    app: otbr
+  ports:
+    - name: rest
+      port: 8080
+      targetPort: 8080
