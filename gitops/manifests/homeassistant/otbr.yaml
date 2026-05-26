@@ -31,26 +31,23 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: otbr
-          image: openthread/border-router:latest
+          image: bnutzer/otbr-tcp:latest
           securityContext:
+            privileged: true
             capabilities:
-              add: [NET_ADMIN]
+              add: [NET_ADMIN, NET_RAW]
           env:
-            - name: OT_RCP_DEVICE
-              value: "spinel+hdlc+tcp://192.168.1.219:6638"
-            - name: OT_INFRA_IF
-              value: "lan0"
-            - name: OT_THREAD_IF
-              value: "wpan0"
-            - name: OT_REST_LISTEN_ADDR
+            - name: RCP_HOST
+              value: "192.168.1.219"
+            - name: RCP_PORT
+              value: "6638"
+            - name: OTBR_REST_LISTEN_ADDRESS
               value: "0.0.0.0"
-            - name: OT_REST_LISTEN_PORT
-              value: "8080"
-            - name: OT_LOG_LEVEL
-              value: "7"
+            - name: OTBR_REST_LISTEN_PORT
+              value: "8081"
           volumeMounts:
             - name: data
-              mountPath: /data
+              mountPath: /var/lib/thread
             - name: tun
               mountPath: /dev/net/tun
       volumes:
@@ -71,5 +68,5 @@ spec:
     app: otbr
   ports:
     - name: rest
-      port: 8080
-      targetPort: 8080
+      port: 8081
+      targetPort: 8081
