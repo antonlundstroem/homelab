@@ -112,7 +112,7 @@ is ~1GB resident JVM.
    ```
    If a stable external issuer URL is wanted (e.g. for laptop logins later), set
    `--kube-apiserver-arg=service-account-issuer=https://...` via
-   `services.k3s.extraFlags` in `nixos/services/k3s/configuration.nix`. For
+   `services.k3s.extraFlags` in `nixos/nodes/node01/configuration.nix`. For
    pod-only flows the in-cluster URL is fine.
 
 2. **Verify RustFS speaks OIDC STS.** Load-bearing assumption — MinIO has it,
