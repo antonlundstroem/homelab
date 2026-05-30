@@ -20,8 +20,8 @@
     };
 
     networks = {
-      "30-CHANGE" = {
-        matchConfig.Name = "CHANGE";
+      "30-eno1" = {
+        matchConfig.Name = "eno1";
         networkConfig.Bridge = "br0";
         linkConfig.RequiredForOnline = "enslaved";
       };

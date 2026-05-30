@@ -2,7 +2,7 @@
   disko.devices = {
     disk.main = {
       type = "disk";
-      device = "/dev/disk/by-id/nvme-CHANGE";
+      device = "/dev/disk/by-id/nvme-WDC_PC_SN530_SDBPNPZ-256G-1006_2043BA806873";
       content = {
         type = "gpt";
         partitions = {
