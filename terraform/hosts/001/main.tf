@@ -7,7 +7,7 @@ resource "incus_instance" "node01" {
   config = {
     "security.secureboot" = "false"
     "limits.cpu"          = "4"
-    "limits.memory"       = "12GiB"
+    "limits.memory"       = "16GiB"
   }
 
   wait_for { type = "agent" }
