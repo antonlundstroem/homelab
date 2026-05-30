@@ -1,7 +1,7 @@
 keys:
   - &base age13fsy6shtkt0z5am3xeru83q8zk3qgjtdj7am90e78xa6jmww23asuna6kk # BASE_PUB
-  - &host001 age15dsj56kn0t90zk4y3lvpkmzxhlp5ptnv27sfqc3uwu6kt308ucfslwv42j
-  # HOST001_PUB
+  - &host001 age15dsj56kn0t90zk4y3lvpkmzxhlp5ptnv27sfqc3uwu6kt308ucfslwv42j # HOST001_PUB
+  - &node02 age1f0x40flm94zg8lr4tfk9x63k83tllzptltjht4anhanwxcpguvhs8thhu4
   - &gpu01 age1hsf3ngnlk9m2xyan6cdj69qafczwqkjyqamtt22xu0p6zde3l4nq5k2lm3
 creation_rules:
   - path_regex: secrets/hosts/001/[^/]+\.yaml$
@@ -9,6 +9,11 @@ creation_rules:
       - age:
           - *base
           - *host001
+  - path_regex: secrets/nodes/node02/[^/]+\.yaml$
+    key_groups:
+      - age:
+          - *base
+          - *node02
   - path_regex: secrets/nodes/gpu01/[^/]+\.yaml$
     key_groups:
       - age:
