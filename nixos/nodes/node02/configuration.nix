@@ -12,31 +12,28 @@ in {
     ./disko.nix
     ./hardware-configuration.nix
     ./networking.nix
-    # TODO: UNCOMMENT
-    #../../modules/k3s/longhorn.nix
+    ../../modules/k3s/longhorn.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
 
-  # TODO: UNCOMMENT
-  #sops = {
-  #  defaultSopsFile = ../../../secrets/nodes/node02/secrets.yaml;
-  #  secrets.k3s-token = {
-  #    path = "/etc/k3s/token";
-  #    mode = "0600";
-  #    owner = "root";
-  #  };
-  #};
+  sops = {
+    defaultSopsFile = ../../../secrets/nodes/node02/secrets.yaml;
+    secrets.k3s-token = {
+      path = "/etc/k3s/token";
+      mode = "0600";
+      owner = "root";
+    };
+  };
 
   #boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  # TODO: UNCOMMENT
-  #services.k3s = {
-  #  enable = true;
-  #  role = "agent";
-  #  serverAddr = "https://${ip}:6443";
-  #  tokenFile = config.sops.secrets.k3s-token.path;
-  #};
+  services.k3s = {
+    enable = true;
+    role = "agent";
+    serverAddr = "https://${ip}:6443";
+    tokenFile = config.sops.secrets.k3s-token.path;
+  };
 
   # Bootloader
   boot.loader.systemd-boot.enable = true;
