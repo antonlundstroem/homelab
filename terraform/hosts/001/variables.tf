@@ -7,7 +7,7 @@ variable "S3_BUCKET_ENDPOINT" {
   description = "s3 bucket endpoint to store state"
 }
 
-variable "SERVICE_K3S_MAC" {
+variable "NODE01_MAC" {
   type        = string
-  description = "MAC address of the k3s service"
+  description = "MAC address of the node01 k3s VM"
 }

@@ -1,3 +1,3 @@
-output "incus_instance_k3s_ip" {
-  value = incus_instance.k3s.ipv4_address
+output "incus_instance_node01_ip" {
+  value = incus_instance.node01.ipv4_address
 }

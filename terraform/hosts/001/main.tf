@@ -1,5 +1,5 @@
-resource "incus_instance" "k3s" {
-  name     = "k3s"
+resource "incus_instance" "node01" {
+  name     = "node01"
   type     = "virtual-machine"
   image    = "images:nixos/25.11"
   profiles = ["default", "lan"]
@@ -27,7 +27,22 @@ resource "incus_instance" "k3s" {
     properties = {
       nictype = "bridged"
       parent  = "br0"
-      hwaddr  = var.SERVICE_K3S_MAC
+      hwaddr  = var.NODE01_MAC
+    }
+  }
+
+  # Per-VM root disk. Overrides the Incus default profile's root device so VM
+  # sizing lives here (Terraform owns VM lifecycle) rather than in incus.nix.
+  # Thin/sparse zvol — only consumes what's written, so 200GiB is a ceiling, not
+  # an allocation. The host OS is protected from a full VM by ZFS reservations on
+  # rpool/nix + rpool/root (nixos/hosts/001/disko.nix).
+  device {
+    name = "root"
+    type = "disk"
+    properties = {
+      pool = "default"
+      path = "/"
+      size = "200GiB"
     }
   }
 }
