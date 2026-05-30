@@ -7,7 +7,10 @@
   zone = "lan";
   capacity = "50GB";
   tags = ["main"]; # e.g. ["primary" "ssd"] — purely informational, surfaced in `garage status`
-  buckets = ["nix-cache" "tofu-state"];
+  buckets = ["tofu-state"]; # Terraform remote state (backend.tf). Add a bucket here
+  # only when something actually consumes it — e.g. a future nix binary cache
+  # (CLAUDE.md "Shared Nix store" TODO), which should create its bucket as part
+  # of that work rather than pre-provisioning an empty one.
 
   tagFlags = lib.concatMapStringsSep " " (t: "-t ${t}") tags;
 in {
@@ -133,7 +136,6 @@ in {
       #
       # garage key list | grep -qw laptop || \
       #   garage key import --key-id "$LAPTOP_KEY_ID" --secret "$LAPTOP_KEY_SECRET" --name laptop
-      # garage bucket allow --read --write --owner nix-cache  --key laptop
       # garage bucket allow --read --write --owner tofu-state --key laptop
     '';
   };

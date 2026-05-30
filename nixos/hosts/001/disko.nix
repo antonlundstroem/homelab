@@ -2,7 +2,7 @@
   disko.devices = {
     disk.main = {
       type = "disk";
-      device = "/dev/disk/by-id/nvme-SAMSUNG_MZVLW128HEGR-000L1_S341NX1K479197";
+      device = "/dev/disk/by-id/nvme-CHANGE";
       content = {
         type = "gpt";
         partitions = {
@@ -49,11 +49,19 @@
           type = "zfs_fs";
           mountpoint = "/";
           options.mountpoint = "legacy";
+          # OS floor: guarantee /'s dataset room from pool free space so a full
+          # (thin, unquota'd) Incus VM can't starve the host. See nix below.
+          options.reservation = "5G";
         };
         nix = {
           type = "zfs_fs";
           mountpoint = "/nix";
           options.mountpoint = "legacy";
+          # Largest OS consumer (store + rebuilds + GC). Reserved so VM growth
+          # hits ENOSPC in-guest (recoverable) instead of wedging the host at a
+          # 100%-full CoW pool. rpool/incus is intentionally left unquota'd so
+          # Incus stays elastic on the disk. Tunable live via `zfs set`.
+          options.reservation = "15G";
         };
         home = {
           type = "zfs_fs";

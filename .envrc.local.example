@@ -11,7 +11,6 @@
 # ---- Garage (host001) S3 access ------------------------------------------
 # Used by:
 #   - OpenTofu's s3 backend (terraform/hosts/001/backend.tf) for remote state
-#   - `nix copy --to s3://nix-cache?...` for the binary cache
 #   - `aws --endpoint-url=http://<host001-ip>:3900 s3 ...` for raw object ops
 #
 # Generated on host001 with `garage key create --name laptop`. The output of
@@ -31,4 +30,4 @@ export INCUS_TOKEN="<trust-token-from-incus-config-trust-add>"
 # OpenTofu reads TF_VAR_<name> for each declared variable.
 export TF_VAR_SSH_HOMELAB_PUB_PATH="~/.ssh/homelab.pub"
 export TF_VAR_S3_BUCKET_ENDPOINT="http://<host001-ip>:3900"
-export TF_VAR_SERVICE_K3S_MAC="00:00:00:00:00:00"
+export TF_VAR_NODE01_MAC="00:00:00:00:00:00"

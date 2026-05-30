@@ -4,7 +4,7 @@
   ...
 }: let
   lan = import ../../settings/networking/configuration.nix;
-  inherit (lan.services.k3s) ip mac;
+  inherit (lan.nodes.node01) ip;
   inherit (lan) gateway;
 
   # FHS-compatible copy of the nvidia userspace binaries (nvidia-smi etc.).

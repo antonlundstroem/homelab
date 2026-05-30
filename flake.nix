@@ -42,9 +42,15 @@
         ./nixos/nodes/gpu01/configuration.nix
       ];
 
-      k3s = mkSystem [
+      node02 = mkSystem [
+        disko.nixosModules.disko
         sops-nix.nixosModules.sops
-        ./nixos/services/k3s/configuration.nix
+        ./nixos/nodes/node02/configuration.nix
+      ];
+
+      node01 = mkSystem [
+        sops-nix.nixosModules.sops
+        ./nixos/nodes/node01/configuration.nix
       ];
     };
 
@@ -60,7 +66,7 @@
         (pkgs.writeShellScriptBin "refresh-kubeconfig" ''
           set -euo pipefail
           repo_root=''${REPO_ROOT:-$PWD}
-          ip=${lan.services.k3s.ip}
+          ip=${lan.nodes.node01.ip}
           echo "k3s server IP: $ip"
           ${pkgs.openssh}/bin/ssh -i ~/.ssh/homelab "admin@$ip" cat /etc/rancher/k3s/k3s.yaml \
             | sed -E "s|server: https://[^[:space:]]+|server: https://$ip:6443|" \

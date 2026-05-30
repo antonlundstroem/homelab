@@ -1,11 +1,15 @@
-{lib, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   lan = import ../../settings/networking/configuration.nix;
-  inherit (lan.services.k3s) ip mac;
+  inherit (lan.nodes.node01) ip mac;
   inherit (lan) gateway;
 in {
-  imports = [../base/configuration.nix];
+  imports = [../../modules/incus-guest/configuration.nix ../../modules/k3s/longhorn.nix];
 
-  networking.hostName = lib.mkForce "k3s";
+  networking.hostName = lib.mkForce "node01";
 
   # Static IP — stable kubeconfig URL + lets us pin the API cert SAN.
   # Picked outside the router's DHCP pool to avoid lease conflicts.
@@ -29,6 +33,12 @@ in {
   services.k3s = {
     enable = true;
     role = "server";
+    # Embedded etcd from first boot (vs the default sqlite backend). Single member
+    # today — same availability as sqlite — but it makes future HA a clean join:
+    # bring up node02/node03 as servers with serverAddr (and no clusterInit) for
+    # etcd quorum, instead of a live sqlite→etcd migration later. k3s also starts
+    # auto-snapshotting etcd. See k3s-node01-migration.md.
+    clusterInit = true;
     extraFlags = [
       "--write-kubeconfig-mode=644"
       "--disable=traefik"

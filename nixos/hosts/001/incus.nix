@@ -40,10 +40,12 @@
             network = "incusbr0";
             type = "nic";
           };
+          # No size here — per-VM root disk size is set per instance in
+          # Terraform (terraform/hosts/001/main.tf), which overrides this device.
+          # This stays only as a fallback root for any VM that doesn't specify one.
           root = {
             path = "/";
             pool = "default";
-            size = "100GiB";
             type = "disk";
           };
         };

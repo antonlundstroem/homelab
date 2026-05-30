@@ -1,12 +1,13 @@
 {
   gateway = "<gw>";
-  services = {
-    k3s = {
+  nodes = {
+    node01 = {
       ip = "<ip>";
       mac = "<mac>";
     };
-  };
-  nodes = {
+    node02 = {
+      ip = "<ip>";
+    };
     gpu01 = {
       ip = "<ip>";
     };
