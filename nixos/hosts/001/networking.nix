@@ -16,6 +16,7 @@
       netdevConfig = {
         Kind = "bridge";
         Name = "br0";
+        MACAddress = "f8:75:a4:37:b6:f8";
       };
     };
 
