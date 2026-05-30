@@ -11,3 +11,8 @@ variable "NODE01_MAC" {
   type        = string
   description = "MAC address of the node01 k3s VM"
 }
+
+variable "HAOS_MAC" {
+  type        = string
+  description = "MAC address of the Home Assistant OS VM NIC (router keys its DHCP reservation to this)"
+}
