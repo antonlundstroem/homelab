@@ -7,7 +7,7 @@
   zone = "lan";
   capacity = "50GB";
   tags = ["main"]; # e.g. ["primary" "ssd"] — purely informational, surfaced in `garage status`
-  buckets = ["tofu-state"]; # Terraform remote state (backend.tf). Add a bucket here
+  buckets = ["tofu-state" "haos"]; # Terraform remote state (backend.tf). Add a bucket here
   # only when something actually consumes it — e.g. a future nix binary cache
   # (CLAUDE.md "Shared Nix store" TODO), which should create its bucket as part
   # of that work rather than pre-provisioning an empty one.
@@ -144,6 +144,7 @@ in {
           garage key import "$ADMIN_KEY_ID" "$ADMIN_KEY_SECRET" --yes -n admin
         fi
         garage bucket allow --read --write --owner tofu-state --key "$ADMIN_KEY_ID"
+        garage bucket allow --read --write --owner haos --key "$ADMIN_KEY_ID"
       fi
     '';
   };
