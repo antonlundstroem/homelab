@@ -130,13 +130,21 @@ in {
         garage bucket info "$bucket" >/dev/null 2>&1 || garage bucket create "$bucket"
       done
 
-      # TODO(sops): once sops-nix lands, supply LAPTOP_KEY_ID + LAPTOP_KEY_SECRET
-      # via the env file and uncomment to make the laptop key fully declarative.
-      # `key import` is idempotent — re-importing the same pair is a no-op.
-      #
-      # garage key list | grep -qw laptop || \
-      #   garage key import --key-id "$LAPTOP_KEY_ID" --secret "$LAPTOP_KEY_SECRET" --name laptop
-      # garage bucket allow --read --write --owner tofu-state --key laptop
+      # Restore the S3 access key Terraform uses for the state bucket. A reinstall
+      # wipes /var/lib/garage/meta (keys included), so without this it must be
+      # re-imported by hand every rebuild. ADMIN_KEY_ID/ADMIN_KEY_SECRET come from
+      # the garage_env sops secret (EnvironmentFile above) and must equal the
+      # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in .envrc.local that Terraform uses.
+      # Capture-then-match, never `garage key list | grep -q`: garage v2 SIGPIPEs
+      # when the reader closes the pipe early (same hazard the layout code above avoids).
+      if [[ -n "''${ADMIN_KEY_ID:-}" && -n "''${ADMIN_KEY_SECRET:-}" ]]; then
+        KEYS=$(garage key list)
+        if [[ "$KEYS" != *"$ADMIN_KEY_ID"* ]]; then
+          # garage_2 syntax is positional + --yes (NOT the old --key-id/--secret flags).
+          garage key import "$ADMIN_KEY_ID" "$ADMIN_KEY_SECRET" --yes -n admin
+        fi
+        garage bucket allow --read --write --owner tofu-state --key "$ADMIN_KEY_ID"
+      fi
     '';
   };
 
