@@ -146,6 +146,22 @@ in {
         garage bucket allow --read --write --owner tofu-state --key "$ADMIN_KEY_ID"
         garage bucket allow --read --write --owner haos --key "$ADMIN_KEY_ID"
       fi
+
+      # Restore the dedicated Home Assistant backup key the same way as admin, so a
+      # reinstall (which wipes /var/lib/garage/meta) doesn't silently 401 HA backups.
+      # HAOS_KEY_ID/HAOS_KEY_SECRET come from the garage_env sops secret. Unlike admin
+      # this key is NOT used by Terraform/.envrc.local — it's only the credential the HA
+      # "S3 Compatible Backup" integration uses (see docs/haos-vm.md). Scope is
+      # read+write on the haos bucket only (no --owner): enough for put/get/list/delete
+      # (backup retention), nothing more. Recompute KEYS locally — under `set -u` the
+      # admin block's $KEYS is out of scope when ADMIN_* are empty.
+      if [[ -n "''${HAOS_KEY_ID:-}" && -n "''${HAOS_KEY_SECRET:-}" ]]; then
+        KEYS=$(garage key list)
+        if [[ "$KEYS" != *"$HAOS_KEY_ID"* ]]; then
+          garage key import "$HAOS_KEY_ID" "$HAOS_KEY_SECRET" --yes -n haos-backup
+        fi
+        garage bucket allow --read --write haos --key "$HAOS_KEY_ID"
+      fi
     '';
   };
 
