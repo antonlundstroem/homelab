@@ -38,6 +38,13 @@ spec:
             # Keep the HuggingFace download cache on the PVC, not the image layer.
             - name: HF_HOME
               value: /models
+            # Read token for pulling gated weights (Llama/Gemma/...). Sourced from the
+            # vllm-secrets SealedSecret (key hf-token); public models work without it.
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-secrets
+                  key: hf-token
           ports:
             - containerPort: 8000
           resources:
