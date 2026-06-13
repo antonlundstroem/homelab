@@ -14,6 +14,11 @@ spec:
       labels:
         app: vllm
     spec:
+      # The Service below is named `vllm`, so k8s' default Docker-link env injection
+      # sets VLLM_PORT=tcp://<clusterIP>:8000 in this pod — which collides with vLLM's
+      # own VLLM_PORT config var (it expects an int) and crashes engine startup. Disable
+      # the legacy link vars; CoreDNS service discovery (vllm.vllm.svc) is unaffected.
+      enableServiceLinks: false
       # gpu01 is tainted nvidia.com/gpu=true:NoSchedule, so tolerate it to land
       # on the GPU node. The nvidia.com/gpu limit below is what actually triggers
       # GPU injection (device plugin + CDI) — the toleration alone doesn't.
