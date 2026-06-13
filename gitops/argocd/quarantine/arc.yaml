@@ -40,6 +40,9 @@ spec:
         maxRunners: 3
         containerMode:
           type: dind
+        template:
+          spec:
+            serviceAccountName: workflow-submitter
         controllerServiceAccount:
           namespace: arc-systems
           name: arc-controller-gha-rs-controller
