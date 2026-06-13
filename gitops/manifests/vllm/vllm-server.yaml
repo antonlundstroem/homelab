@@ -45,6 +45,12 @@ spec:
                 secretKeyRef:
                   name: vllm-secrets
                   key: hf-token
+            # gpu01 is a GTX 1660 — Turing (cc 7.5), no Tensor Cores. vLLM's default
+            # FlashInfer attention kernels assume newer HW and crash the engine with
+            # a CUDA "invalid argument" on the first forward pass. xFormers is vLLM's
+            # supported Volta/Turing backend. (TORCH_SDPA is the slower fallback.)
+            - name: VLLM_ATTENTION_BACKEND
+              value: XFORMERS
           ports:
             - containerPort: 8000
           resources:
