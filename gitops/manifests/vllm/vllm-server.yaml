@@ -31,9 +31,15 @@ spec:
         - name: vllm
           image: vllm/vllm-openai:latest # pin a tag for reproducibility
           args:
-            - --model=Qwen/Qwen2.5-1.5B-Instruct
-            - --max-model-len=8192
-            - --gpu-memory-utilization=0.90
+            # Model name is injected from the vllm-secrets Secret (key: model) via
+            # the MODEL_NAME env below, so it never lands in this (public) repo.
+            - --model=$(MODEL_NAME)
+            # Tight-fit tuning for a small model on a 6 GB GPU: cap context, claim
+            # most of VRAM, and drop CUDA graphs (--enforce-eager) to save memory.
+            # Lower --max-model-len if it OOMs at load.
+            - --max-model-len=4096
+            - --gpu-memory-utilization=0.95
+            - --enforce-eager
             # GTX 1660 is Turing (cc 7.5): FA2 is unsupported and the default
             # FlashInfer prefill kernel crashes (CUDA "invalid argument"). Force
             # the Triton backend — a viable candidate vLLM lists for this GPU.
@@ -43,8 +49,13 @@ spec:
             # Keep the HuggingFace download cache on the PVC, not the image layer.
             - name: HF_HOME
               value: /models
-            # Read token for pulling gated weights (Llama/Gemma/...). Sourced from the
-            # vllm-secrets SealedSecret (key hf-token); public models work without it.
+            # Model name + HF token both come from the vllm-secrets Secret
+            # (keys: model, hf-token), keeping them out of this repo.
+            - name: MODEL_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-secrets
+                  key: model
             - name: HF_TOKEN
               valueFrom:
                 secretKeyRef:
