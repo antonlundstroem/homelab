@@ -21,12 +21,12 @@ spec:
         - name: open-webui
           image: ghcr.io/open-webui/open-webui:main # pin a tag for reproducibility
           env:
-            # Point at the in-cluster vLLM OpenAI-compatible API.
-            - name: OPENAI_API_BASE_URL
-              value: http://vllm.vllm.svc.cluster.local:8000/v1
-            - name: OPENAI_API_KEY
-              value: dummy # vLLM is unauthenticated unless --api-key is set
-            - name: ENABLE_OLLAMA_API
+            # Talk to the in-cluster Ollama server via its native API. Pull and
+            # manage models from the Open WebUI admin UI (or `ollama pull`).
+            - name: OLLAMA_BASE_URL
+              value: http://ollama.ollama.svc.cluster.local:11434
+            # No OpenAI-style backend anymore; Ollama provides the models.
+            - name: ENABLE_OPENAI_API
               value: "false"
           ports:
             - containerPort: 8080
