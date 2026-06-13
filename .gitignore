@@ -9,3 +9,4 @@
 nixos/hosts/**/certs/
 nixos/settings/networking/configuration.nix
 secrets/sealed-secrets
+terraform/hosts/001/.haos/
