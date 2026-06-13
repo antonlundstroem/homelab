@@ -117,7 +117,13 @@ in {
             repoURL = "https://github.com/antonlundstroem/homelab.git";
             path = "gitops/argocd";
             targetRevision = "HEAD";
-            directory.recurse = true;
+            directory = {
+              recurse = true;
+              # gitops/argocd/quarantine/ is a holding area for temporarily
+              # disabled apps. Without this exclude, recurse would descend into
+              # it and deploy them anyway. git mv an app YAML there to park it.
+              exclude = "quarantine/**";
+            };
           };
           destination = {
             server = "https://kubernetes.default.svc";
