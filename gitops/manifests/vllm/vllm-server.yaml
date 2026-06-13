@@ -50,9 +50,10 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            # ~5 min budget for first-run weight download + model load.
+            # ~15 min budget: first boot downloads weights (disposable PVC) then
+            # runs torch.compile + CUDA-graph capture before binding :8000.
             periodSeconds: 10
-            failureThreshold: 30
+            failureThreshold: 90
           readinessProbe:
             httpGet:
               path: /health
