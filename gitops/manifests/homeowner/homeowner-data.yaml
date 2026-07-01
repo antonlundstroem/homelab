@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: homeowner-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+  # ponytail: cluster default StorageClass (local-path). Disposable — a wipe means
+  # re-scrape (free) + re-score (cents/listing). Add a backup only if that stops being true.

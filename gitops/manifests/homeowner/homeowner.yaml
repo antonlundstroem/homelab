@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homeowner-config
+data:
+  # Search settings (spec: config-file, read-only in UI). Edit + restart the Deployment
+  # to change the search — no image rebuild. db.path points at the PVC mount.
+  config.toml: |
+    [booli]
+    area_ids = [334]
+    min_list_price = 2500000
+    max_list_price = 4500000
+
+    [scoring]
+    model = "claude-sonnet-5"
+
+    [refresh]
+    interval_hours = 24
+
+    [db]
+    path = "/data/homeowner.db"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homeowner
+  labels: { app: homeowner }
+spec:
+  replicas: 1 # single writer — SQLite on a RWO PVC, no concurrency
+  strategy: { type: Recreate } # never two pods on the same SQLite file
+  selector:
+    matchLabels: { app: homeowner }
+  template:
+    metadata:
+      labels: { app: homeowner }
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull # read-only GHCR token (SealedSecret, bootstrap step)
+      containers:
+        - name: homeowner
+          # ponytail: pin the sha-<short> tag from the first CI build; bump it here to deploy.
+          image: ghcr.io/antonlundstroem/homeowner:sha-55dce24
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homeowner-secrets
+                  key: ANTHROPIC_API_KEY
+                  optional: true # UI serves without it; only scoring needs the key
+            - name: HOMEOWNER_CONFIG
+              value: /app/config.toml
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /app/config.toml
+              subPath: config.toml
+          readinessProbe:
+            httpGet: { path: /, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 15
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: homeowner-data
+        - name: config
+          configMap:
+            name: homeowner-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homeowner
+spec:
+  selector: { app: homeowner }
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homeowner
+spec:
+  # Tailscale operator provisions https://homeowner.<tailnet>.ts.net from tls.hosts[0].
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: homeowner
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - homeowner
