@@ -26,9 +26,6 @@ data:
     # restart the Deployment and the next refresh enriches it (ORS-only, cached).
     cities = [
       { name = "Örebro", lat = 59.2741, lon = 15.2066 },
-      { name = "Stockholm", lat = 59.3293, lon = 18.0686 },
-      { name = "Göteborg", lat = 57.7089, lon = 11.9746 },
-      { name = "Malmö", lat = 55.6050, lon = 13.0038 },
       { name = "Motala", lat = 58.5372, lon = 15.0364 },
       { name = "Sandviken", lat = 60.6166, lon = 16.7758 },
     ]
@@ -52,7 +49,7 @@ spec:
       containers:
         - name: homeowner
           # ponytail: pin the sha-<short> tag from the first CI build; bump it here to deploy.
-          image: ghcr.io/antonlundstroem/homeowner:sha-02e5eb7
+          image: ghcr.io/antonlundstroem/homeowner:sha-4c73aa2
           ports:
             - containerPort: 8000
           env:
