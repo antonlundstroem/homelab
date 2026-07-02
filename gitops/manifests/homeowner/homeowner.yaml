@@ -39,7 +39,7 @@ spec:
       containers:
         - name: homeowner
           # ponytail: pin the sha-<short> tag from the first CI build; bump it here to deploy.
-          image: ghcr.io/antonlundstroem/homeowner:sha-e3cc74f
+          image: ghcr.io/antonlundstroem/homeowner:sha-3d2e4f6
           ports:
             - containerPort: 8000
           env:
