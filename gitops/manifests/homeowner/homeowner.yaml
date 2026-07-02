@@ -19,6 +19,19 @@ data:
 
     [db]
     path = "/data/homeowner.db"
+
+    [distances]
+    ors_url = "http://openrouteservice.openrouteservice.svc.cluster.local:8080"
+    # Road distance to each city on every card; nearest flagged. Add a city +
+    # restart the Deployment and the next refresh enriches it (ORS-only, cached).
+    cities = [
+      { name = "Örebro", lat = 59.2741, lon = 15.2066 },
+      { name = "Stockholm", lat = 59.3293, lon = 18.0686 },
+      { name = "Göteborg", lat = 57.7089, lon = 11.9746 },
+      { name = "Malmö", lat = 55.6050, lon = 13.0038 },
+      { name = "Motala", lat = 58.5372, lon = 15.0364 },
+      { name = "Sandviken", lat = 60.6166, lon = 16.7758 },
+    ]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,7 +52,7 @@ spec:
       containers:
         - name: homeowner
           # ponytail: pin the sha-<short> tag from the first CI build; bump it here to deploy.
-          image: ghcr.io/antonlundstroem/homeowner:sha-3d2e4f6
+          image: ghcr.io/antonlundstroem/homeowner:sha-ebb5fe5
           ports:
             - containerPort: 8000
           env:
