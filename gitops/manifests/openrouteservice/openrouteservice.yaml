@@ -1,0 +1,131 @@
+# Self-hosted OpenRouteService for Homeowner Phase 2 (distance enrichment).
+# In-cluster only: http://openrouteservice.openrouteservice.svc.cluster.local:8080
+# Sweden extract, driving-car + foot-walking, Matrix endpoint (all on by default).
+#
+# To refresh OSM data / rebuild graphs (no code change):
+#   kubectl -n openrouteservice exec deploy/openrouteservice -- \
+#     sh -c 'rm -f /home/ors/files/sweden-latest.osm.pbf && rm -rf /home/ors/graphs/*'
+#   kubectl -n openrouteservice delete pod -l app=openrouteservice
+# The init container re-downloads the latest extract; ORS rebuilds graphs on start
+# (first build takes a while — the startupProbe allows up to 3 h).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openrouteservice-config
+data:
+  ors-config.yml: |
+    ors:
+      engine:
+        profile_default:
+          build:
+            source_file: /home/ors/files/sweden-latest.osm.pbf
+        profiles:
+          driving-car:
+            enabled: true
+          foot-walking:
+            enabled: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openrouteservice
+spec:
+  replicas: 1
+  # RWO PVC holds the graphs: never run two pods at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openrouteservice
+  template:
+    metadata:
+      labels:
+        app: openrouteservice
+    spec:
+      initContainers:
+        # Fetch the Sweden extract onto the PVC once; idempotent, resumes partial
+        # downloads. Runs as root to pre-own dirs for the ors user (uid 1000) —
+        # kubelet would otherwise create subPath dirs root:0755.
+        - name: fetch-osm
+          image: curlimages/curl:8.14.1
+          securityContext:
+            runAsUser: 0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              mkdir -p /data/files /data/graphs
+              if [ ! -f /data/files/sweden-latest.osm.pbf ]; then
+                curl -fL --retry 3 -C - -o /data/files/sweden.pbf.part \
+                  https://download.geofabrik.de/europe/sweden-latest.osm.pbf
+                mv /data/files/sweden.pbf.part /data/files/sweden-latest.osm.pbf
+              fi
+              chown 1000:1000 /data /data/files /data/graphs /data/files/sweden-latest.osm.pbf
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: openrouteservice
+          image: openrouteservice/openrouteservice:v9.9.0
+          env:
+            - name: ORS_CONFIG_LOCATION
+              value: /ors-conf/ors-config.yml
+            - name: REBUILD_GRAPHS
+              value: "false"
+            - name: XMS
+              value: 2g
+            # ~2x pbf-size x 2 profiles (~3 GB) plus headroom for the build spike.
+            - name: XMX
+              value: 8g
+          ports:
+            - containerPort: 8082
+          resources:
+            requests:
+              cpu: "1"
+              memory: 6Gi
+            limits:
+              memory: 10Gi
+          # First graph build (Sweden, 2 profiles) takes a long time; health only
+          # flips ready once graphs are loaded. No livenessProbe on purpose — it
+          # would kill the pod mid-rebuild.
+          startupProbe:
+            httpGet:
+              path: /ors/v2/health
+              port: 8082
+            periodSeconds: 30
+            failureThreshold: 360
+          readinessProbe:
+            httpGet:
+              path: /ors/v2/health
+              port: 8082
+            periodSeconds: 15
+          volumeMounts:
+            - name: data
+              subPath: files
+              mountPath: /home/ors/files
+            - name: data
+              subPath: graphs
+              mountPath: /home/ors/graphs
+            # Config mounted outside /home/ors so the entrypoint never tries to
+            # write into a read-only ConfigMap mount.
+            - name: config
+              mountPath: /ors-conf
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: openrouteservice-data
+        - name: config
+          configMap:
+            name: openrouteservice-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openrouteservice
+spec:
+  selector:
+    app: openrouteservice
+  ports:
+    # Spec contract is :8080; ORS itself listens on 8082 since v8.
+    - port: 8080
+      targetPort: 8082
