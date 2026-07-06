@@ -7,9 +7,25 @@ data:
   # to change the search — no image rebuild. db.path points at the PVC mount.
   config.toml: |
     [booli]
-    area_ids = [334]
+    # one tab per area; lat/lon = the area's own city center (local "nära stad" anchor)
+    areas = [
+      { id = 318, name = "Örebro", lat = 59.2741, lon = 15.2066 },  # 318 = Örebro län
+      { id = 880, name = "Motala", lat = 58.5372, lon = 15.0364 },
+      { id = 393, name = "Linköping", lat = 58.4108, lon = 15.6214 },
+      { id = 252, name = "Norrköping", lat = 58.5877, lon = 16.1924 },
+    ]
     min_list_price = 2500000
     max_list_price = 4500000
+
+    [hemnet]
+    # Hemnet mirror of [booli] areas; `area` = the Booli tab its listings land on.
+    # Price band + Villa,Gård shared with [booli]. Ids: SPIKE-hemnet.md (homeowner repo).
+    locations = [
+      { id = 17757, area = 318 },   # Örebro län
+      { id = 17995, area = 880 },   # Motala kommun
+      { id = 17847, area = 393 },   # Linköpings kommun
+      { id = 18002, area = 252 },   # Norrköpings kommun
+    ]
 
     [scoring]
     model = "claude-sonnet-5"
@@ -22,10 +38,10 @@ data:
 
     [distances]
     ors_url = "http://openrouteservice.openrouteservice.svc.cluster.local:8080"
-    # Road distance to each city on every card; nearest flagged. Add a city +
-    # restart the Deployment and the next refresh enriches it (ORS-only, cached).
+    # Shared anchors: every card shows these ON TOP of its own area's city
+    # ([booli] areas); nearest flagged. Add a city + restart the Deployment and
+    # the next refresh enriches it (ORS-only, cached).
     cities = [
-      { name = "Örebro", lat = 59.2741, lon = 15.2066 },
       { name = "Motala", lat = 58.5372, lon = 15.0364 },
       { name = "Sandviken", lat = 60.6166, lon = 16.7758 },
     ]
@@ -49,7 +65,7 @@ spec:
       containers:
         - name: homeowner
           # ponytail: pin the sha-<short> tag from the first CI build; bump it here to deploy.
-          image: ghcr.io/antonlundstroem/homeowner:sha-1961331
+          image: ghcr.io/antonlundstroem/homeowner:sha-2c9c410
           ports:
             - containerPort: 8000
           env:
