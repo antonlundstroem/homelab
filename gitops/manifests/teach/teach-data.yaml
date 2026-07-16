@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teach-workspace
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      # /data on the shim pod: lesson workspace + claude config/session state +
+      # the conversation→session map. Lessons are HTML files — 5Gi is generous.
+      # local-path = disposable tier; durability is post-v1 (teache issue #9).
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teach-openwebui-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      # Open WebUI SQLite DB (chats, settings). Separate from the chat instance's PVC.
+      storage: 2Gi

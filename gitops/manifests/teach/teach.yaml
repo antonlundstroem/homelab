@@ -1,0 +1,187 @@
+# teach — headless Claude Code as a learning studio (spec: teache repo, spec-teach-chat.md).
+# One hostname, two planes: / → Open WebUI (chat), /catalog → shim (lessons off the PVC).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teach-shim
+  labels: { app: teach-shim }
+spec:
+  replicas: 1 # single-writer: global claude lock, session map + workspace on a RWO PVC
+  strategy: { type: Recreate } # never two shims on the same PVC (spec: single-active)
+  selector:
+    matchLabels: { app: teach-shim }
+  template:
+    metadata:
+      labels: { app: teach-shim }
+    spec:
+      # No GPU toleration on purpose — plain web app, must survive gpu01 being off.
+      imagePullSecrets:
+        - name: ghcr-pull # read-only GHCR token, sealed for ns teach (teache issue #4)
+      containers:
+        - name: shim
+          # ponytail: pin the sha-<short> tag from the first CI build; bump it here to deploy.
+          image: ghcr.io/antonlundstroem/teache:sha-f698406
+          ports:
+            - containerPort: 8080
+          env:
+            # The ONLY credential. Precedence guard (spec): none of ANTHROPIC_API_KEY,
+            # ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_USE_* may ever appear here — API key
+            # would silently win over the subscription token and bill the console.
+            - name: CLAUDE_CODE_OAUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: teach-secrets
+                  key: CLAUDE_CODE_OAUTH_TOKEN
+            - name: HOME
+              value: /data/home
+            - name: CLAUDE_CONFIG_DIR # claude config + --resume session state, survives restarts
+              value: /data/claude
+            - name: WORKSPACE_DIR # the teach workspace: lessons/, MISSION.md, session map
+              value: /data/workspace
+            - name: PUBLIC_BASE_URL
+              value: https://teach.tail363515.ts.net
+            - name: PORT
+              value: "8080"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi # claude subprocess is a full node app; headroom matters
+          readinessProbe:
+            httpGet: { path: /v1/models, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /v1/models, port: 8080 }
+            periodSeconds: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: teach-workspace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teach-shim
+spec:
+  selector: { app: teach-shim }
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teach-openwebui
+  labels: { app: teach-openwebui }
+spec:
+  replicas: 1 # RWO PVC + single-writer SQLite
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: teach-openwebui }
+  template:
+    metadata:
+      labels: { app: teach-openwebui }
+    spec:
+      containers:
+        - name: open-webui
+          # ≥ 0.10.0 required: X-OpenWebUI-Chat-Id / X-OpenWebUI-Task headers (spec).
+          image: ghcr.io/open-webui/open-webui:v0.10.2
+          env:
+            - name: OPENAI_API_BASE_URL
+              value: http://teach-shim.teach.svc.cluster.local:8080/v1
+            - name: OPENAI_API_KEY # shim ignores auth; must merely be non-empty
+              value: shim
+            - name: ENABLE_OPENAI_API
+              value: "true"
+            - name: ENABLE_OLLAMA_API
+              value: "false"
+            # Kill background task calls (default ON) — each would fire an extra
+            # completions request that --resume-injects garbage into the teach session.
+            - name: ENABLE_TITLE_GENERATION
+              value: "false"
+            - name: ENABLE_TAGS_GENERATION
+              value: "false"
+            - name: ENABLE_FOLLOW_UP_GENERATION
+              value: "false"
+            - name: ENABLE_RETRIEVAL_QUERY_GENERATION
+              value: "false"
+            # The shim keys conversations on the X-OpenWebUI-Chat-Id header this enables.
+            - name: ENABLE_FORWARD_USER_INFO_HEADERS
+              value: "true"
+            # Single user; the tailnet is the auth boundary (spec: auth beyond Tailscale
+            # is out of scope). Only valid on a fresh DB — set from first boot, keep set.
+            - name: WEBUI_AUTH
+              value: "false"
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            # First boot runs DB migrations; gate liveness so it can't restart-loop.
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 30
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: teach-openwebui-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teach-openwebui
+spec:
+  selector: { app: teach-openwebui }
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: teach
+spec:
+  # Two-path routing verified live against the operator (teache issue #3):
+  # correct path-segment Prefix semantics, no prefix stripping (shim serves
+  # under /catalog itself), WS upgrades pass on HTTP/1.1.
+  ingressClassName: tailscale
+  rules:
+    - http:
+        paths:
+          - path: /catalog
+            pathType: Prefix
+            backend:
+              service:
+                name: teach-shim
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: teach-openwebui
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - teach
