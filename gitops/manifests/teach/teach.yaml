@@ -49,6 +49,10 @@ spec:
             requests:
               cpu: 200m
               memory: 512Mi # claude subprocess is a full node app; headroom matters
+            limits:
+              # Hard ceiling: an unbounded claude turn is the prime suspect for the
+              # 2026-07-16 node01 freeze. Kill the pod, not the control-plane VM.
+              memory: 3Gi
           readinessProbe:
             httpGet: { path: /v1/models, port: 8080 }
             initialDelaySeconds: 3
@@ -111,9 +115,12 @@ spec:
             # The shim keys conversations on the X-OpenWebUI-Chat-Id header this enables.
             - name: ENABLE_FORWARD_USER_INFO_HEADERS
               value: "true"
-            # Single user; the tailnet is the auth boundary (spec: auth beyond Tailscale
-            # is out of scope). Only valid on a fresh DB — set from first boot, keep set.
+            # Auth ON: Anton set an account on 2026-07-16, and Open WebUI refuses
+            # WEBUI_AUTH=false once users exist. Tailnet remains the outer wall;
+            # signup closed so this stays single-user.
             - name: WEBUI_AUTH
+              value: "true"
+            - name: ENABLE_SIGNUP
               value: "false"
           ports:
             - containerPort: 8080
