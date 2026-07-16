@@ -20,7 +20,7 @@ spec:
       containers:
         - name: shim
           # ponytail: pin the sha-<short> tag from the first CI build; bump it here to deploy.
-          image: ghcr.io/antonlundstroem/teache:latest
+          image: ghcr.io/antonlundstroem/teache:sha-f698406
           ports:
             - containerPort: 8080
           env:
