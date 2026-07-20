@@ -41,6 +41,14 @@ Three tools, three non-overlapping responsibilities. Don't reach across the line
 
 When to actually re-run Terraform: first-time provisioning, you changed something Terraform owns, the VM is unrecoverable, or you want to validate that a fresh image self-bootstraps end-to-end (`tofu apply -replace=incus_instance.node01`).
 
+### Home Assistant OS — a non-NixOS appliance VM
+
+`homeassistant` is the second Incus VM, but it deliberately breaks node01's pattern because **HAOS is a Buildroot appliance, not NixOS**: there's no `nixosConfiguration`, no `nixos-rebuild`, and no `images:` remote to boot from. Its OS image is Home Assistant's prebuilt qcow2, **staged manually** (download + `xz -d` + a metadata tarball) and imported via Terraform's `incus_image.source_file`; the instance builds from the resulting image `.fingerprint`. Full procedure in **`haos-vm.md`**. (This re-introduces Home Assistant, which was dropped from gitops in the node01 restructure — now a dedicated VM rather than an in-cluster app.)
+
+Two sharp edges vs. node01, both encoded in `terraform/hosts/001/main.tf`:
+- **No agent, no reported IP.** HAOS runs no Incus guest agent and `br0` is an unmanaged bridge (the LAN router does DHCP, not Incus), so Incus never learns the VM's IP. `wait_for` is therefore `delay` (not `agent`/`ipv4`, which would hang), `ipv4_address` is null, and the IP is pinned by a **router DHCP reservation** on `var.HOMEASSISTANT_MAC` — *not* via `nixos/settings/networking/configuration.nix` (that file is NixOS-only).
+- **Its disk state is PRECIOUS, not disposable.** Unlike the cluster's `local-path` PVCs (rebuilt empty from git), all HA config/automations/history/add-ons live on this VM's root disk. `tofu apply -replace` — or changing `image`/`type`/disk size — **destroys it permanently**. Upgrade HAOS **in-OS** (Settings → System → Updates), not by bumping the Terraform `image`; back it up to host001 Garage S3 (the repo's durability pattern).
+
 ### GitOps layout
 
 The k3s VM bootstraps itself into a working GitOps state with no manual `kubectl` step. `nixos/nodes/node01/configuration.nix` writes three resources into the k3s auto-deploy directory via `services.k3s.manifests`: an `ingress-nginx` `HelmChart`, an `argo-cd` `HelmChart` (with a Tailscale Ingress exposed at `argocd.<tailnet>.ts.net`), and a single root `Application` pointing at `gitops/argocd/` in this repo. From there ArgoCD takes over: every YAML in `gitops/argocd/` is a child `Application` describing one workload, and each one references its actual manifests under `gitops/manifests/<name>/`. To add a new service: drop manifests into `gitops/manifests/<name>/`, add `gitops/argocd/<name>.yaml` pointing at it, commit — no rebuild required.
