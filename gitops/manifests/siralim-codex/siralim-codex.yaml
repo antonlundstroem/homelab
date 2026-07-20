@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siralim-codex
+  labels: { app: siralim-codex }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: siralim-codex }
+  template:
+    metadata:
+      labels: { app: siralim-codex }
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull # read-only GHCR token (SealedSecret, issue #2)
+      containers:
+        - name: siralim-codex
+          # Pin the sha-<short> tag from CI; bump this line + commit to roll a new
+          # image (manual rollout — no argocd-image-updater, no CI write-back).
+          image: ghcr.io/antonlundstroem/siralim-codex:sha-372b867
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 3
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: siralim-codex
+spec:
+  selector: { app: siralim-codex }
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: siralim-codex
+spec:
+  # Tailscale operator provisions https://siralim.<tailnet>.ts.net from tls.hosts[0].
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: siralim-codex
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - siralim
