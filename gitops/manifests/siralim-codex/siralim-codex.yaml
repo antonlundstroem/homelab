@@ -17,7 +17,7 @@ spec:
         - name: siralim-codex
           # Pin the sha-<short> tag from CI; bump this line + commit to roll a new
           # image (manual rollout — no argocd-image-updater, no CI write-back).
-          image: ghcr.io/antonlundstroem/siralim-codex:sha-465439d
+          image: ghcr.io/antonlundstroem/siralim-codex:sha-6ab4b0a
           ports:
             - containerPort: 80
           readinessProbe:
