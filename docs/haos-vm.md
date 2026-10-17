@@ -2,7 +2,7 @@
 
 Brings up **Home Assistant OS (HAOS)** as a second Incus VM on host001, alongside `node01`.
 This re-introduces Home Assistant — removed from gitops in the node01 restructure (see
-`k3s-node01-migration.md`) — but now as a **dedicated appliance VM** rather than an in-cluster app.
+`k3s-node01-migration.md`, no longer in the repo) — but now as a **dedicated appliance VM** rather than an in-cluster app.
 
 **Why this isn't like node01.** HAOS is a Buildroot appliance, **not NixOS**: no `nixosConfiguration`,
 no `nixos-rebuild`, and it's published nowhere as an `images:` remote. So the OS image is Home
@@ -21,7 +21,7 @@ Assistant manages itself — Terraform only owns the VM shell (cores/memory/disk
 ## 1. Pick a MAC and reserve its IP on the router
 Choose a MAC in the Incus `00:16:3e:` range, distinct from node01's `00:16:3e:42:00:01` — e.g.
 **`00:16:3e:42:00:02`**. On your router, bind that MAC → a fixed LAN IP **outside** the DHCP pool
-(e.g. `192.168.1.50`). Do this **before** boot so HA comes up at the intended address.
+(the VM sits at `192.168.1.200` today, the address Incus and `docs/OUTAGE-TRIAGE.md` show; check on the router that this is the reserved address and that it lies outside the pool). Do this **before** boot so HA comes up at the intended address.
 
 Why a router reservation (not the NixOS networking file): HAOS isn't NixOS, so it can't use the
 match-on-MAC static-IP config the NixOS nodes use. The MAC is owned by Terraform and is stable across
@@ -30,7 +30,7 @@ rebuilds, so the reservation hands back the same IP every time — zero in-HAOS 
 ## 2. Set the local Terraform variable
 In `.envrc.local` (gitignored), set the MAC you chose, then reload:
 ```sh
-# export TF_VAR_HOMEASSISTANT_MAC="00:16:3e:42:00:02"
+# export TF_VAR_HAOS_MAC="00:16:3e:42:00:02"
 direnv allow
 ```
 
@@ -66,8 +66,8 @@ tar -czf metadata.tar.gz metadata.yaml
 ```sh
 cd terraform/hosts/001
 tofu init -upgrade   # picks up provider 1.1.x (incus_image.source_file + wait_for delay)
-tofu plan            # expect: node01 UNCHANGED; ADD incus_image.haos + incus_instance.homeassistant;
-                     # var HOMEASSISTANT_MAC bound
+tofu plan            # expect: node01 UNCHANGED; ADD incus_image.haos + incus_instance.haos;
+                     # var HAOS_MAC bound
 tofu apply
 ```
 `incus_image.source_file` reads the staged files locally and uploads the ~1 GB qcow2 to host001 over the
@@ -135,7 +135,7 @@ ip neigh show dev br0 | grep 00:16:3e:42:00:02   # confirms it's live on the LAN
 ```
 From any LAN host:
 ```sh
-curl -sI http://192.168.1.50:8123               # 200/302 — then open it for the HA onboarding wizard
+curl -sI http://192.168.1.200:8123               # 200/302 — then open it for the HA onboarding wizard
 avahi-browse -rt _home-assistant._tcp           # mDNS discovery works (bridged br0 = first-class LAN)
 ```
 
