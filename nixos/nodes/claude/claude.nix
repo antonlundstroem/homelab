@@ -15,7 +15,8 @@
   # Trust: Claude Code saves per-directory trust as `projects.<dir>.hasTrustDialogAccepted`
   # in ~/.claude.json, never for $HOME itself, and server mode refuses an untrusted directory
   # ("Workspace not trusted") because a service has no TTY to answer the dialog. Each unit
-  # therefore seeds its own directory's flag before starting (`rc trust <dir>`), which is
+  # therefore seeds its own directory's flag before starting (`rc trust <dir>`, done inside
+  # `rc serve` for the template unit), which is
   # exactly what accepting the dialog writes. The same call seeds `remoteDialogSeen`, the flag
   # the one-time "Enable Remote Control? (y/n)" consent writes (found by diffing the file after
   # answering it once on 2026-10-17), so nothing here ever needs an interactive first run.
@@ -24,6 +25,7 @@
     runtimeInputs = [pkgs.jq pkgs.coreutils pkgs.systemd];
     text = ''
       repos="$HOME/repos"
+
       trust() {
         local dir="$1" f="$HOME/.claude.json" tmp
         [ -s "$f" ] || echo '{}' > "$f"
@@ -32,19 +34,56 @@
         mv "$tmp" "$f"
         chmod 600 "$f"
       }
+
+      # Resolve a repo argument to a path relative to ~/repos: a relative path such as
+      # keyboard/budgie, or a bare directory name searched up to three levels deep.
+      # Repos may be grouped in subdirectories; the result must be a git repository.
+      resolve() {
+        local arg="''${1:-}" hits
+        arg="''${arg%/}"
+        [ -n "$arg" ] || { echo "rc: missing repo" >&2; exit 2; }
+        if [ -d "$repos/$arg/.git" ]; then echo "$arg"; return; fi
+        mapfile -t hits < <(cd "$repos" && find . -mindepth 1 -maxdepth 3 -type d -name "$arg" -not -path '*/.*' -exec test -d '{}/.git' ';' -print | sed 's|^\./||' | sort)
+        case "''${#hits[@]}" in
+          1) echo "''${hits[0]}" ;;
+          0) echo "rc: no git repository named '$arg' under $repos" >&2; exit 1 ;;
+          *) echo "rc: '$arg' is ambiguous, use a path: ''${hits[*]}" >&2; exit 1 ;;
+        esac
+      }
+
+      # Instance name = the relative path, systemd-escaped (/ becomes -, a literal - becomes
+      # \x2d); the unit gets the path back as %I.
+      unit() { echo "claude-remote-control@$(systemd-escape "$1").service"; }
+
+      list() {
+        systemctl --user --no-pager --no-legend --plain --all list-units 'claude-remote-control*' \
+          | while read -r u _ active sub _; do
+              case "$u" in
+                claude-remote-control@*.service)
+                  i="''${u#claude-remote-control@}"; i="''${i%.service}"
+                  printf '%-40s %s (%s)\n' "$(systemd-escape --unescape "$i")" "$active" "$sub" ;;
+                *) printf '%-40s %s (%s)\n' "orchestrator (~/repos)" "$active" "$sub" ;;
+              esac
+            done
+      }
+
       case "''${1:-}" in
-        trust) trust "$2" ;;
+        trust) trust "''${2:-}" ;;
+        serve)   # ExecStart of the template unit (WorkingDirectory is the repo already)
+          trust "$repos/$2"
+          exec ${claude}/bin/claude remote-control --name "$(basename "$2")" --spawn worktree ;;
         start)
-          [ -d "$repos/$2/.git" ] || { echo "rc: no git repository at $repos/$2" >&2; exit 1; }
+          rel="$(resolve "''${2:-}")"; u="$(unit "$rel")"
           # add-wants rather than enable: NixOS-generated units carry no [Install] section.
-          systemctl --user add-wants default.target "claude-remote-control@$2.service"
-          systemctl --user start "claude-remote-control@$2.service"
-          systemctl --user --no-pager --no-legend list-units "claude-remote-control@*" ;;
+          systemctl --user add-wants default.target "$u"
+          systemctl --user start "$u"
+          list ;;
         stop)
-          systemctl --user disable --now "claude-remote-control@$2.service"
-          systemctl --user --no-pager --no-legend --all list-units "claude-remote-control@*" ;;
-        list) systemctl --user --no-pager --no-legend --all list-units "claude-remote-control*" ;;
-        *) echo "usage: rc start <repo> | rc stop <repo> | rc list" >&2; exit 2 ;;
+          rel="$(resolve "''${2:-}" 2>/dev/null || echo "''${2%/}")"
+          systemctl --user disable --now "$(unit "$rel")"
+          list ;;
+        list) list ;;
+        *) echo "usage: rc start <repo> | rc stop <repo> | rc list   (repo: a directory name, or a path relative to ~/repos)" >&2; exit 2 ;;
       esac
     '';
   };
@@ -98,9 +137,11 @@ in {
   environment.etc."claude-code/CLAUDE.md".text = ''
     # House rules on this VM (claude, the keyboard-design agent host)
 
-    - Repos live under ~/repos, one directory per repository. This session's directory
-      (~/repos) is the orchestrator: start new projects here.
-    - New project: `gh repo create <name> --private --clone` from ~/repos, then offer to start
+    - Repos live under ~/repos, one directory per repository, grouped in subdirectories when
+      useful (e.g. ~/repos/keyboard/budgie). This session's directory (~/repos) is the
+      orchestrator: start new projects here.
+    - New project: `gh repo create <name> --private --clone` from the right group directory under
+      ~/repos (ask which group if unclear), then offer to start
       its Remote Control server with the `rc` skill, and tell the user the server is called <name>.
     - Remote Control servers start and stop only through the `rc` skill (`rc start|stop|list`).
       Stop the servers of repos nobody is working on; each one is a resident process.
@@ -116,8 +157,10 @@ in {
     name: rc
     description: Start, stop or list the Remote Control servers for repos under ~/repos. Use only when the user explicitly asks, e.g. "start rc for budgie", "stop budgie's server", "which servers are running".
     ---
-    Arguments: $ARGUMENTS — a verb (start, stop, list), then a repo name under ~/repos.
-    Run the matching command with the Bash tool, then tell the user which servers are running, by name:
+    Arguments: $ARGUMENTS — a verb (start, stop, list), then a repo: its directory name (found anywhere
+    up to three levels under ~/repos, e.g. `budgie`) or, if that is ambiguous, its path relative to
+    ~/repos (e.g. `keyboard/budgie`). Run the matching command with the Bash tool, then tell the user
+    which servers are running, by name:
 
     - start <repo>: `rc start <repo>` — the repo must be a git repository under ~/repos; the server
       returns after reboots until stopped, and its directory is trusted automatically.
@@ -150,13 +193,15 @@ in {
     "claude-remote-control@" =
       rcServer
       // {
-        description = "Claude Code Remote Control server for ~/repos/%i";
+        description = "Claude Code Remote Control server for ~/repos/%I";
         serviceConfig =
           rcServer.serviceConfig
           // {
-            WorkingDirectory = "${repos}/%i";
-            ExecStartPre = "${rc}/bin/rc trust ${repos}/%i";
-            ExecStart = "${claude}/bin/claude remote-control --name %i --spawn worktree";
+            # %I is the unescaped instance name: the repo's path relative to ~/repos
+            # (keyboard/budgie), so repos may be grouped in subdirectories. `rc serve`
+            # seeds the directory's trust flag and execs the server, titled by basename.
+            WorkingDirectory = "${repos}/%I";
+            ExecStart = "${rc}/bin/rc serve %I";
           };
       };
   };
