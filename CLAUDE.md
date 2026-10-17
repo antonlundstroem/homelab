@@ -20,7 +20,7 @@ Apply infrastructure (devShell provides `opentofu`; direnv loads it automaticall
 cd terraform/hosts/001 && tofu init && tofu plan && tofu apply
 ```
 
-In-place rebuild on a running host (uses `nixosConfigurations.{host001,node01}`) — this is the normal way to roll changes out, not a VM rebuild via Terraform:
+In-place rebuild on a running host (uses `nixosConfigurations.{host001,node01,node02,gpu01,claude}`) — this is the normal way to roll changes out, not a VM rebuild via Terraform:
 
 ```sh
 nixos-rebuild switch --flake .#node01  --target-host admin@<ip> --sudo
@@ -43,11 +43,27 @@ When to actually re-run Terraform: first-time provisioning, you changed somethin
 
 ### Home Assistant OS — a non-NixOS appliance VM
 
-`homeassistant` is the second Incus VM, but it deliberately breaks node01's pattern because **HAOS is a Buildroot appliance, not NixOS**: there's no `nixosConfiguration`, no `nixos-rebuild`, and no `images:` remote to boot from. Its OS image is Home Assistant's prebuilt qcow2, **staged manually** (download + `xz -d` + a metadata tarball) and imported via Terraform's `incus_image.source_file`; the instance builds from the resulting image `.fingerprint`. Full procedure in **`haos-vm.md`**. (This re-introduces Home Assistant, which was dropped from gitops in the node01 restructure — now a dedicated VM rather than an in-cluster app.)
+`haos` is the second Incus VM, but it deliberately breaks node01's pattern because **HAOS is a Buildroot appliance, not NixOS**: there's no `nixosConfiguration`, no `nixos-rebuild`, and no `images:` remote to boot from. Its OS image is Home Assistant's prebuilt qcow2, **staged manually** (download + `xz -d` + a metadata tarball) and imported via Terraform's `incus_image.source_file`; the instance builds from the resulting image `.fingerprint`. Full procedure in **`docs/haos-vm.md`**. (This re-introduces Home Assistant, which was dropped from gitops in the node01 restructure — now a dedicated VM rather than an in-cluster app.)
 
 Two sharp edges vs. node01, both encoded in `terraform/hosts/001/main.tf`:
-- **No agent, no reported IP.** HAOS runs no Incus guest agent and `br0` is an unmanaged bridge (the LAN router does DHCP, not Incus), so Incus never learns the VM's IP. `wait_for` is therefore `delay` (not `agent`/`ipv4`, which would hang), `ipv4_address` is null, and the IP is pinned by a **router DHCP reservation** on `var.HOMEASSISTANT_MAC` — *not* via `nixos/settings/networking/configuration.nix` (that file is NixOS-only).
+- **No agent, no reported IP.** HAOS runs no Incus guest agent and `br0` is an unmanaged bridge (the LAN router does DHCP, not Incus), so Incus never learns the VM's IP. `wait_for` is therefore `delay` (not `agent`/`ipv4`, which would hang), `ipv4_address` is null, and the IP is pinned by a **router DHCP reservation** on `var.HAOS_MAC` — *not* via `nixos/settings/networking/configuration.nix` (that file is NixOS-only).
 - **Its disk state is PRECIOUS, not disposable.** Unlike the cluster's `local-path` PVCs (rebuilt empty from git), all HA config/automations/history/add-ons live on this VM's root disk. `tofu apply -replace` — or changing `image`/`type`/disk size — **destroys it permanently**. Upgrade HAOS **in-OS** (Settings → System → Updates), not by bumping the Terraform `image`; back it up to host001 Garage S3 (the repo's durability pattern).
+
+### claude — always-on Claude Code host VM
+
+`claude` is the third Incus VM: a NixOS box (`nixos/nodes/claude/`, node01's pattern) that runs Claude Code for the keyboard-design repos (ergogen/KiCad), reachable from the phone through Claude Code Remote Control and from the laptop through `herdr --remote claude`. The design, every decision and its reasoning live in **`docs/CLAUDE-CODE-HOST.md`**. Day-to-day changes flow through:
+
+```sh
+nixos-rebuild switch --flake .#claude --target-host admin@<claude-ip> --sudo
+```
+
+Sharp edges, all deliberate:
+- **All Claude configuration is declarative under `/etc/claude-code/`** (`nixos/nodes/claude/claude.nix`): the managed settings file, a managed-policy `CLAUDE.md` with the house rules, and the `rc` skill. No wrapper around the binary, nothing imported from the private `~/nix` flake. `~/.claude/settings.json` on the VM stays writable for what Claude edits itself.
+- **Servers are on demand.** One always-on Remote Control server (unit `claude-remote-control-repos`, running in `~/repos`; its pre-created session is titled by `--name`, `Homelab Orchestrator`, when the environment is first created, and renamed afterwards from the app or with `/rename`; Claude Code never saves trust for the home directory itself, so it cannot run in `~`) is the entry point; per-repo servers are instances of the `claude-remote-control@` user template unit, started with the `rc` skill ("start rc for budgie") and stopped the same way. Repos live under `~/repos`.
+- **No sops in v1.** One-time manual steps after a (re)install, in this order: `sudo tailscale up --ssh` (as admin); then as the `claude` user, logged in over SSH (`ssh -i ~/.ssh/homelab claude@<claude-ip>`; a `sudo -iu claude` shell has no systemd user session, so `systemctl --user` there first needs `export XDG_RUNTIME_DIR=/run/user/$(id -u)`): `claude auth login` (claude.ai account), `systemctl --user start claude-remote-control-repos` (the Remote Control units are gated on `~/.claude/.credentials.json` and stay inactive until that login exists; each unit seeds its own directory's trust flag through the `rc` helper before starting, so no interactive first run is needed), `gh auth login` (the user's own GitHub account), and `git clone` of `budgie` into `~/repos`. Backups are deferred, so a VM rebuild repeats these.
+- **First boot is as root.** Terraform pushes `~/.ssh/homelab.pub` to `/root/.ssh/authorized_keys` on the bootstrap image; the first `nixos-rebuild` targets `root@<dhcp-ip>` (the static IP from `nixos/settings/networking/configuration.nix` and the `admin`/`claude` users only exist after it). Expect stale `known_hosts` entries for reused DHCP addresses. Use `nixos-rebuild boot` and a reboot for that first rollout: the bootstrap image runs dbus-broker and our config classic dbus, so the 26.05 switch-inhibitor check refuses a live `switch` (this is how it was built on 2026-10-17).
+- **Bootstrap image alias.** The image server dropped `nixos/25.11` in Oct 2026; `claude` boots `images:nixos/26.05`. node01's Terraform still names 25.11 — leave it, a changed `image` forces a replace.
+- **Sized with the host in mind:** 2 vCPU / 8 GiB / 64 GiB thin. HAOS was trimmed from 8 to 4 GiB in the same change and host001's ZFS ARC is capped at 4 GiB (`boot.kernelParams` in `nixos/hosts/001/configuration.nix`), so committed VM RAM stays at 28 GiB on the 31 GiB host.
 
 ### GitOps layout
 
@@ -129,7 +145,7 @@ Gotchas:
 
 Two tiers, deliberately split:
 
-- **In-cluster (`local-path`)** — ephemeral, reproducible state. Every PVC today (Prometheus, Alertmanager, mlflow-db, rustfs) is on the default `local-path` provisioner and is treated as **disposable**: the node01 rebuild intentionally discards all of it and ArgoCD repopulates the workloads empty from git (see `k3s-node01-migration.md`). Nothing you care about should live *only* on a `local-path` PVC.
+- **In-cluster (`local-path`)** — ephemeral, reproducible state. Every PVC today (Prometheus, Alertmanager, mlflow-db, rustfs) is on the default `local-path` provisioner and is treated as **disposable**: the node01 rebuild intentionally discards all of it and ArgoCD repopulates the workloads empty from git (the node01 restructure; its migration notes are no longer in the repo). Nothing you care about should live *only* on a `local-path` PVC.
 - **Durable (host001 ZFS + Garage S3)** — `host001` is always-on, has the most disk, runs ZFS (snapshots/scrub/compression), sits *outside* the cluster, and already serves S3 via Garage (`nixos/hosts/001/garage.nix`). This is where data that must survive a cluster rebuild belongs. The durability *pattern* is app backups → Garage S3 (e.g. CNPG `barmanObjectStore` → a Garage bucket) — **documented, not implemented**, because in-cluster data is disposable today.
 
 **Why no Longhorn (yet).** The obvious "replicated block storage in the cluster" answer, but the always-on cluster is effectively **2 nodes** — node01 (k3s server in an Incus VM on host001) + node02 (baremetal agent). gpu01 is intermittent and excluded; it would only ever hold stale replicas. 2 nodes is a poor fit (no clean replica-count/quorum story, every reboot degrades every volume) and adds real RAM/CPU/disk overhead on a 16 GB / 128 GB worker. So it's **deferred, not rejected**.

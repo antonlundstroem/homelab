@@ -11,5 +11,9 @@
     gpu01 = {
       ip = "<ip>";
     };
+    claude = {
+      ip = "<ip>";
+      mac = "<mac>";
+    };
   };
 }

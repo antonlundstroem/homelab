@@ -16,3 +16,8 @@ variable "HAOS_MAC" {
   type        = string
   description = "MAC address of the Home Assistant OS VM NIC (router keys its DHCP reservation to this)"
 }
+
+variable "CLAUDE_MAC" {
+  type        = string
+  description = "MAC address of the claude (Claude Code agent) VM NIC; the guest matches on it for its static IP"
+}

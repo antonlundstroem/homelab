@@ -11,13 +11,21 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # claude VM (nixos/nodes/claude): Claude Code's native binary, autoPatchelf'd, unfree.
+    # Not following our nixpkgs on purpose: the package pins what the binary was patched against.
+    claude-latest.url = "github:sadjow/claude-code-nix";
+    # herdr: terminal multiplexer for agent sessions, runs headless on the claude VM.
+    # Not following our nixpkgs: herdr needs zig_0_16, newer than our pin provides,
+    # so it builds against its own locked nixpkgs (one extra nixpkgs eval, no other cost).
+    herdr.url = "github:ogulcancelik/herdr";
   };
 
-  outputs = {
+  outputs = inputs @ {
     self,
     nixpkgs,
     disko,
     sops-nix,
+    ...
   }: let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
@@ -27,6 +35,8 @@
     mkSystem = modules:
       nixpkgs.lib.nixosSystem {
         inherit system;
+        # lets node configs reach flake inputs (claude-latest, herdr) as `inputs`
+        specialArgs = {inherit inputs;};
         modules = modules;
       };
   in {
@@ -51,6 +61,12 @@
       node01 = mkSystem [
         sops-nix.nixosModules.sops
         ./nixos/nodes/node01/configuration.nix
+      ];
+
+      # Always-on Claude Code host (Remote Control + herdr) for the keyboard repos.
+      # Spec: docs/CLAUDE-CODE-HOST.md. No sops in v1: Tailscale and GitHub are joined by hand.
+      claude = mkSystem [
+        ./nixos/nodes/claude/configuration.nix
       ];
     };
 

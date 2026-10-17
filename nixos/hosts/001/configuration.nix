@@ -22,6 +22,11 @@
   # ZFS Support
   boot.supportedFilesystems = ["zfs"];
   boot.zfs.forceImportRoot = false;
+  # Cap the ARC at 4 GiB (default was ~30 GiB = most of RAM). With 28 GiB committed
+  # to VMs on a 31 GiB host, an uncapped ARC and VM memory fight, and the loser is
+  # an OOM-killed qemu. Takes effect at boot; set live without a reboot with
+  # `echo 4294967296 | sudo tee /sys/module/zfs/parameters/zfs_arc_max`.
+  boot.kernelParams = ["zfs.zfs_arc_max=4294967296"];
 
   # Bootloader
   boot.loader.systemd-boot.enable = true;
